@@ -227,6 +227,13 @@ for vi = 1:numel(variantNames)
         L_mean_dBFS = NaN(1,nFreq);
     end
 
+    % Summen-Terzpegel (energetische Addition über alle Positionen)
+    if any(valid_mask(:))
+        L_sum_dBFS = 10*log10(sum(10.^(L_dBFS/10) .* valid_mask, 1));
+    else
+        L_sum_dBFS = NaN(1,nFreq);
+    end
+
     % Optional: Differenzmodus
     L_plot = L_dBFS;
     if strcmpi(plotMode,'difference')
@@ -318,7 +325,28 @@ for vi = 1:numel(variantNames)
         close(fig);
     end
 
-    fprintf('%s abgeschlossen: Excel + Plots gespeichert.\n', variantName);
+    % Summen-Terzpegel Plot
+    fig = figure('Visible','off','Position',[100,100,1000,500]);
+    stairs(f_terz, L_sum_dBFS, 'LineWidth',2, 'Color',[0.85 0.33 0.10]);
+    grid on; set(gca,'XScale','log');
+    xlabel('Frequenz [Hz]'); ylabel('Summen-Pegel [dB]');
+    title(sprintf('%s - Summen-Terzpegel (alle Positionen)', variantName));
+    xlim(f_lim);
+    xticks(xtick_vals);
+    xticklabels(xtick_labels);
+
+    % Y-Achse basierend auf Summen-Daten
+    validSum = L_sum_dBFS(~isnan(L_sum_dBFS));
+    if ~isempty(validSum)
+        ylim([floor(min(validSum)/10)*10, ceil(max(validSum)/10)*10]);
+    end
+
+    filename = fullfile(outputPlotDir, sprintf('Terzpegel_%s_Summe%s.png', variantName, modeSuffix));
+    saveas(fig, filename);
+    saveas(fig, strrep(filename,'.png','.fig'));
+    close(fig);
+
+    fprintf('%s abgeschlossen: Excel + Plots gespeichert (inkl. Summen-Terzpegel).\n', variantName);
 end
 
 disp('========================================');
