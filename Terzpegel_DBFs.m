@@ -368,7 +368,62 @@ for vi = 1:numel(variantNames)
     saveas(fig, strrep(filename,'.png','.fig'));
     close(fig);
 
-    fprintf('%s abgeschlossen: Excel + Plots gespeichert (inkl. Summen-Terzpegel).\n', variantName);
+    % Mittelwert-Spektrum (Übertragungsfunktion gemittelt über alle Positionen)
+    if any(validH)
+        % Finde gemeinsame Frequenz-Auflösung (nehme die mit den meisten Punkten)
+        max_len = 0;
+        ref_idx = 0;
+        for pi = 1:nPos
+            if ~isempty(H_all{pi}) && length(H_all{pi}) > max_len
+                max_len = length(H_all{pi});
+                ref_idx = pi;
+            end
+        end
+
+        if ref_idx > 0
+            % Verwende Frequenz-Vektor der Referenz-Übertragungsfunktion
+            freq_mean = freq_all{ref_idx};
+            H_mean = zeros(size(freq_mean));
+            count = 0;
+
+            % Interpoliere alle Übertragungsfunktionen auf gemeinsame Frequenzen und mittele
+            for pi = 1:nPos
+                if ~isempty(H_all{pi})
+                    % Interpoliere auf gemeinsame Frequenzen
+                    H_interp = interp1(freq_all{pi}, H_all{pi}, freq_mean, 'linear', NaN);
+                    % Addiere gültige Werte
+                    valid_idx = ~isnan(H_interp);
+                    H_mean(valid_idx) = H_mean(valid_idx) + H_interp(valid_idx);
+                    count = count + 1;
+                end
+            end
+
+            % Mittelwert berechnen
+            if count > 0
+                H_mean = H_mean / count;
+
+                % Plot erstellen
+                fig = figure('Visible','off','Position',[100,100,1000,500]);
+                semilogx(freq_mean, H_mean, '-', 'LineWidth',2, 'Color',[0.4660 0.6740 0.1880]);
+                grid on;
+                xlabel('Frequenz [Hz]'); ylabel('Pegel [dBFS]');
+                title(sprintf('%s - Mittelwert-Spektrum (alle Positionen)', variantName));
+                xlim(f_lim);
+                ylim(y_range_H);
+                xticks(xtick_vals);
+                xticklabels(xtick_labels);
+
+                filename = fullfile(outputPlotDir, sprintf('Spektrum_%s_Mittelwert%s.png', variantName, modeSuffix));
+                saveas(fig, filename);
+                saveas(fig, strrep(filename,'.png','.fig'));
+                close(fig);
+
+                fprintf('  → Mittelwert-Spektrum erstellt: %s\n', filename);
+            end
+        end
+    end
+
+    fprintf('%s abgeschlossen: Excel + Plots gespeichert (inkl. Summen-Terzpegel + Mittelwert-Spektrum).\n', variantName);
 end
 
 disp('========================================');
@@ -530,7 +585,7 @@ function plotLowEnergyIR(ir_original, ir_trunc, start_idx, end_idx, variantName,
     t_end = t_orig(end_idx);
     t_max = min(500, t_end * 1.1);  % Ende + 10% Puffer, maximal 500ms
 
-    fig = figure('Position', [100, 100, 1400, 800]);
+    fig = figure('Visible','off','Position', [100, 100, 1400, 800]);
 
     % Subplot 1: Originale IR (Amplitude)
     subplot(3,1,1);
@@ -576,8 +631,8 @@ function plotLowEnergyIR(ir_original, ir_trunc, start_idx, end_idx, variantName,
     xlim([0 max(t_trunc)]);
 
     % Speichern
-    filename_png = fullfile('Plots', sprintf('LowEnergy_%s_Pos_%02d_E%.1f.png', variantName, pos, E_ratio));
-    filename_fig = fullfile('Plots', sprintf('LowEnergy_%s_Pos_%02d_E%.1f.fig', variantName, pos, E_ratio));
+    filename_png = fullfile('Plots', sprintf('%s_Pos_%02d_E%.1f.png', variantName, pos, E_ratio));
+    filename_fig = fullfile('Plots', sprintf('%s_Pos_%02d_E%.1f.fig', variantName, pos, E_ratio));
 
     saveas(fig, filename_png);
     savefig(fig, filename_fig);
