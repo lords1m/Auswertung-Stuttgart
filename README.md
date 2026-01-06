@@ -4,7 +4,7 @@ Dieses Repository enthält MATLAB-Skripte zur Analyse von Raumimpulsantworten (R
 
 ---
 
-## 📁 Erforderliche Ordnerstruktur
+## Erforderliche Ordnerstruktur
 
 ```
 Auswertung-Stuttgart/
@@ -23,7 +23,7 @@ Auswertung-Stuttgart/
 └── README.md                      # Diese Datei
 ```
 
-## 📄 Skript-Übersicht
+## Skript-Übersicht
 
 ### 1. Terzpegel_DBFs.m - Terzpegel-Analyse (Hauptskript)
 
@@ -31,14 +31,14 @@ Auswertung-Stuttgart/
 Berechnet Terzpegel (1/3-Oktavband-Analyse) für Raumimpulsantworten aller Varianten und Positionen.
 
 **Funktionen:**
-- ✅ Lundeby-Truncation zur Rauschunterdrückung
-- ✅ FFT-basierte Spektralanalyse
-- ✅ Terzpegel-Berechnung (IEC 61260 normgerecht)
-- ✅ dBFS-Normierung relativ zum globalen Maximum
-- ✅ Mittelwert- und Summen-Terzpegel
-- ✅ Mittelwert-Spektrum über alle Positionen
-- ✅ SNR und Dynamic Range Logging
-- ✅ Automatische Diagnose-Plots bei niedriger Energie (<60%)
+- Lundeby-Truncation zur Rauschunterdrückung
+- FFT-basierte Spektralanalyse
+- Terzpegel-Berechnung (IEC 61260 normgerecht)
+- dBFS-Normierung relativ zum globalen Maximum
+- Mittelwert- und Summen-Terzpegel
+- Mittelwert-Spektrum über alle Positionen
+- SNR und Dynamic Range Logging
+- Automatische Diagnose-Plots bei niedriger Energie (<60%)
 
 **Einstellungen (Zeilen 22-31):**
 ```matlab
@@ -65,13 +65,13 @@ plotMode = 'absolute';                               % Die Werte sollen absolut 
 Berechnet die Nachhallzeit RT60 für alle Varianten und Positionen mittels Schroeder-Integration und T20-Methode.
 
 **Funktionen:**
-- ✅ Lundeby-Truncation
-- ✅ Terzband-Filterung (IEC 61260)
-- ✅ Schroeder-Integration für Energieabfall
-- ✅ T20-Bereich (-5 dB bis -25 dB) mit linearer Regression
-- ✅ RT60-Extrapolation (-60 dB)
-- ✅ Mittelwert über ausgewählte Positionen (5,6,7,9,10,11,13,14)
-- ✅ Varianten-Vergleich
+- Lundeby-Truncation
+- Terzband-Filterung (IEC 61260)
+- Schroeder-Integration für Energieabfall
+- T20-Bereich (-5 dB bis -25 dB) mit linearer Regression
+- RT60-Extrapolation (-60 dB)
+- Mittelwert über ausgewählte Positionen (5,6,7,9,10,11,13,14)
+- Varianten-Vergleich
 
 **Einstellungen (Zeilen 11-30):**
 ```matlab
@@ -87,10 +87,10 @@ positions_to_average = [5, 6, 7, 9, 10, 11, 13, 14]; % Positionen für Mittelwer
 Visualisiert den Butterworth-Bandpass-Filter für eine spezifische Variante, Position und Terzband-Mittenfrequenz.
 
 **Funktionen:**
-- ✅ Filter-Frequenzgang (breit + Zoom)
-- ✅ Original vs. gefilterte Impulsantwort (Zeit + Frequenz)
-- ✅ Markierungen für Mittenfrequenz, Bandgrenzen und -3 dB Punkt
-- ✅ 6 Subplots für vollständige Analyse
+- Filter-Frequenzgang (breit + Zoom)
+- Original vs. gefilterte Impulsantwort (Zeit + Frequenz)
+- Markierungen für Mittenfrequenz, Bandgrenzen und -3 dB Punkt
+- 6 Subplots für vollständige Analyse
 
 **Einstellungen (Zeilen 11-16):**
 ```matlab
@@ -109,7 +109,7 @@ Vergleicht Terzpegel mehrerer Varianten in einem Plot.
 
 **Status:** Vorhanden, aber möglicherweise veraltet. Verwende stattdessen die Vergleichsfunktion in `Terzpegel_DBFs.m`.
 
-## 🔧 Dateiformat-Anforderungen
+## Dateiformat-Anforderungen
 
 ### MAT-Dateien
 
@@ -128,13 +128,13 @@ ir    % Alternative
 ```
 
 **Beispiele:**
-- `Variante_1_neu,Pos_1.mat` ✅
-- `Variante_2,Pos_15.mat` ✅
-- `Variante_3_alt,Pos_7.mat` ✅ (wird mit `excludePattern` gefiltert)
+- `Variante_1_neu,Pos_1.mat`
+- `Variante_2,Pos_15.mat`
+- `Variante_3_alt,Pos_7.mat` (wird mit `excludePattern` gefiltert)
 
 ---
 
-## 📊 Terzband-Frequenzen (IEC 61260)
+## Terzband-Frequenzen (IEC 61260)
 
 Die Skripte verwenden 48 normgerechte 1/3-Oktavband-Mittenfrequenzen:
 
@@ -148,7 +148,7 @@ Die Skripte verwenden 48 normgerechte 1/3-Oktavband-Mittenfrequenzen:
 
 ---
 
-## 🧮 Wichtige Berechnungen
+## Wichtige Berechnungen
 
 ### Lundeby-Truncation
 Entfernt Rauschen am Anfang und Ende der Impulsantwort:
@@ -180,7 +180,7 @@ L_sum [dB] = 10 × log10( Σ(10^(L_i/10)) )
 
 ---
 
-## ⚙️ Systemanforderungen
+## Systemanforderungen
 
 - **MATLAB:** R2019b oder neuer (wegen `compose()`, `xline()`)
 - **Toolboxen:**
@@ -189,7 +189,7 @@ L_sum [dB] = 10 × log10( Σ(10^(L_i/10)) )
 
 ---
 
-## 🚀 Schnellstart
+## Schnellstart
 
 1. **Ordner erstellen:**
    ```bash
@@ -217,7 +217,7 @@ L_sum [dB] = 10 × log10( Σ(10^(L_i/10)) )
 
 ---
 
-## 📝 Hinweise
+## Hinweise
 
 ### Energie-Warnung (<60%)
 Wenn eine Impulsantwort weniger als 60% Energie nach Truncation behält, wird automatisch ein Diagnose-Plot erstellt:
@@ -225,8 +225,18 @@ Wenn eine Impulsantwort weniger als 60% Energie nach Truncation behält, wird au
 Plots/[Variante]_Pos_[XX]_E[XX.X].png
 ```
 
+**Grenzwert anpassen:**
+- Datei: `Terzpegel_DBFs.m`
+- Zeile: 198 - `if E_ratio < 60` (60% ändern für andere Schwelle)
+
 ### Plots werden nicht angezeigt
 Alle Plots verwenden `'Visible','off'` und werden direkt gespeichert, ohne Fenster zu öffnen.
+
+**Plots sichtbar machen:**
+- Datei: `Terzpegel_DBFs.m`
+- Zeilen: 277, 314, 334, 371, 477 - `'Visible','off'` auf `'Visible','on'` ändern
+- Datei: `Visualize_Terzband_Filter.m`
+- Zeile: 74 - `'Visible','off'` auf `'Visible','on'` ändern
 
 ### Excel-Schreibfehler
 Falls Excel-Export fehlschlägt:
@@ -237,12 +247,12 @@ Falls Excel-Export fehlschlägt:
 ### Fehlende Dateien
 Das Skript überspringt fehlende Positionen automatisch und gibt Warnungen aus:
 ```
-⚠ WARNUNG: Datei nicht gefunden für Variante_X, Position Y
+WARNUNG: Datei nicht gefunden für Variante_X, Position Y
 ```
 
 ---
 
-## 📚 Literatur
+## Literatur
 
 - **IEC 61260:** Electroacoustics - Octave-band and fractional-octave-band filters
 - **Lundeby et al. (1995):** "Uncertainties of Measurements in Room Acoustics"
@@ -250,7 +260,7 @@ Das Skript überspringt fehlende Positionen automatisch und gibt Warnungen aus:
 
 ---
 
-## 👤 Autor
+## Autor
 
 Erstellt für die Auswertung von Ultraschall-Raumimpulsantworten in Stuttgart.
 
