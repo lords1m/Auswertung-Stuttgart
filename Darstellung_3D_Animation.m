@@ -1,238 +1,126 @@
-%% ============================================================
-%  Darstellung_3D_Animation.m
-%
-%  Erstellt 3D-Animationen (Surface Plot) aus den Impulsantworten.
-%  Z-Achse = Pegel in dB.
-%
-%  Output: .mp4 Dateien im Ordner 'Videos_3D'
-% ============================================================
+%% VISUALISIERUNG: HIGH-SPEED PROPAGATION (0.0 - 0.1s)
+% Fokus: Darstellung der Wellenfront in den ersten 100ms.
+% Features: Interaktive Wahl von Variante & Terzband.
 
-clear;
-clc;
-close all;
+clear; clc; close all;
 
-% Arbeitsverzeichnis
-scriptDir = fileparts(mfilename('fullpath'));
-if ~isempty(scriptDir), cd(scriptDir); end
-fprintf('Arbeitsverzeichnis: %s\n', pwd);
+%% 1. KONFIGURATION
+inputFolder = 'data';
+outputFolder = 'Videos_HighSpeed_01s';
+if ~exist(outputFolder, 'dir'), mkdir(outputFolder); end
 
-%% ---------------- Einstellungen ----------------
-dataDir = 'data';
-outputVideoDir = 'Videos_3D'; 
-fs = 500e3; % 500 kHz
+% Audio-Parameter
+targetDuration = 0.1; % Wir laden EXAKT nur die ersten 0.1 Sekunden
+fs_assumed = 48000;   % Fallback, falls fs nicht in Datei steht
 
-% Video-Parameter
-videoFPS = 20;          
-timeStep_ms = 0.01;      % 0,1 Sekunden Schritte
-windowSize_ms = 0.1;    
-maxDuration_s = 0.1;    
-cLim = [-60 0];         % Farbskala und Z-Achsen-Limit
+% Varianten (Namen anpassen!)
+variantNames = {'Variante_1', 'Variante_2', 'Variante_3', 'Variante_4'};
 
-% Layout (4x4)
-positionsLayout = {
-    'M1',  'M2',  'M3',  'M4';
-    'M5',  'M6',  'M7',  'M8';
-    'M9',  'M10', 'M11', 'M12';
-    'Q1',  'M13', 'M14', 'M15';
-};
+% Terzbänder (Mittenfrequenzen)
+terzFreqs = [4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000, ...
+             25000, 31500, 40000, 50000, 63000];
 
-%% ---------------- Setup ----------------
-if ~exist(dataDir, 'dir'), error('Datenordner "%s" nicht gefunden!', dataDir); end
-if ~exist(outputVideoDir,'dir'), mkdir(outputVideoDir); end
+%% 2. INTERAKTIVE AUSWAHL
+% Variante wählen
+[vIdx, ok1] = listdlg('PromptString', 'Variante wählen:', ...
+                      'SelectionMode', 'single', 'ListString', variantNames, ...
+                      'ListSize', [200, 150]);
+if ~ok1, return; end
+selVar = variantNames{vIdx};
 
-dirInfo = dir(fullfile(dataDir, '*.mat'));
-matFiles = {dirInfo.name};
-if isempty(matFiles), error('Keine .mat-Dateien gefunden!'); end
+% Frequenz wählen
+freqStr = string(terzFreqs) + " Hz";
+[fIdx, ok2] = listdlg('PromptString', 'Terzband wählen:', ...
+                      'SelectionMode', 'single', 'ListString', freqStr, ...
+                      'ListSize', [200, 300]);
+if ~ok2, return; end
+selFreq = terzFreqs(fIdx);
 
-% Varianten finden
-variantNames = {};
-for i = 1:numel(matFiles)
-    tokens = regexp(matFiles{i}, '^(.*?)[_,]Pos', 'tokens', 'once', 'ignorecase');
-    if isempty(tokens), tokens = regexp(matFiles{i}, '^(.*?)[_,]Quelle', 'tokens', 'once', 'ignorecase'); end
-    if ~isempty(tokens), variantNames{end+1} = tokens{1}; end
+%% 3. GEOMETRIE (Wand-Layout)
+% Q1 = (0,0) unten links
+cols_x = [0.5, 1.5, 2.5, 3.5]; 
+rows_y = [3.0, 2.0, 1.0, 0.3]; 
+
+% Mapping: [PosID, X, Y]
+micMap = [
+    1, cols_x(1), rows_y(1);   2, cols_x(2), rows_y(1);   3, cols_x(3), rows_y(1);   4, cols_x(4), rows_y(1);
+    5, cols_x(1), rows_y(2);   6, cols_x(2), rows_y(2);   7, cols_x(3), rows_y(2);   8, cols_x(4), rows_y(2);
+    9, cols_x(1), rows_y(3);  10, cols_x(2), rows_y(3);  11, cols_x(3), rows_y(3);  12, cols_x(4), rows_y(3);
+   13, cols_x(2), rows_y(4);  14, cols_x(3), rows_y(4);  15, cols_x(4), rows_y(4);
+];
+numMics = size(micMap, 1);
+
+%% 4. DATEN LADEN (Nur 0-100ms)
+fprintf('Lade erste 0.1s für %s...\n', selVar);
+
+% Wir checken erst die Samplerate der ersten Datei
+filePattern = [selVar, '_Pos_%d.mat'];
+testFile = fullfile(inputFolder, sprintf(filePattern, 1));
+
+actualFs = fs_assumed;
+if exist(testFile, 'file')
+    info = load(testFile);
+    if isfield(info, 'fs'), actualFs = info.fs; end
 end
-variantNames = unique(variantNames);
-fprintf('Gefundene Varianten: %d\n', numel(variantNames));
 
-%% ---------------- Globale Referenz (Max Amplitude) ----------------
-MaxAmp_global = 0;
-fprintf('Ermittle globale Referenz (Max Amplitude)...\n');
-for i = 1:numel(matFiles)
-    try
-        S = load(fullfile(dataDir, matFiles{i}));
-        ir = extractIR(S);
-        if ~isempty(ir), MaxAmp_global = max(MaxAmp_global, max(abs(ir))); end
-    catch, end
-end
-if MaxAmp_global == 0, MaxAmp_global = 1; end
-fprintf('MaxAmp_global: %g\n', MaxAmp_global);
+numSamples = round(targetDuration * actualFs);
+rawData = zeros(numSamples, numMics);
 
-%% ---------------- Video-Erstellung ----------------
-for v = 1:numel(variantNames)
-    variante = variantNames{v};
-    fprintf('\nVerarbeite Variante %d/%d: %s\n', v, numel(variantNames), variante);
+for i = 1:numMics
+    posID = micMap(i,1);
+    fName = fullfile(inputFolder, sprintf(filePattern, posID));
     
-    % 1. Daten laden
-    [rows, cols] = size(positionsLayout);
-    irs = cell(rows, cols);
-    
-    for r = 1:rows
-        for c = 1:cols
-            posName = positionsLayout{r, c};
-            filePath = find_mat_file(dataDir, matFiles, variante, posName);
-            if ~isempty(filePath)
-                try
-                    S = load(filePath);
-                    rawIR = extractIR(S);
-                    [ir_trunc, ~, ~, ~, ~, ~] = truncateIR(rawIR);
-                    irs{r,c} = ir_trunc;
-                catch, irs{r,c} = []; end
-            else, irs{r,c} = []; end
+    if exist(fName, 'file')
+        tmp = load(fName);
+        fn = fieldnames(tmp);
+        sig = double(tmp.(fn{1}));
+        
+        % Nur die ersten numSamples nehmen
+        L = min(length(sig), numSamples);
+        if L > 0
+            rawData(1:L, i) = sig(1:L);
         end
-    end
-    
-    % 2. Zeitvektor
-    dt = timeStep_ms / 1000;
-    winLen = windowSize_ms / 1000;
-    
-    currentMaxLen = 0;
-    for r=1:rows, for c=1:cols, currentMaxLen = max(currentMaxLen, length(irs{r,c})); end, end
-    duration = min(maxDuration_s, currentMaxLen / fs);
-    timePoints = 0:dt:duration;
-    
-    if isempty(timePoints), continue; end
-    
-    % 3. Video & 3D-Plot Initialisierung
-    videoName = fullfile(outputVideoDir, ['3D_Animation_' variante '.mp4']);
-    vObj = VideoWriter(videoName, 'MPEG-4');
-    vObj.FrameRate = videoFPS;
-    open(vObj);
-    
-    fig = figure('Visible', 'off', 'Position', [100, 100, 800, 600], 'Color', 'w');
-    
-    % Gitter für Surface Plot erstellen
-    [X, Y] = meshgrid(1:cols, 1:rows);
-    
-    % Initialer Surface Plot (flach bei -60dB)
-    initialZ = ones(rows, cols) * cLim(1);
-    hSurf = surf(X, Y, initialZ);
-    
-    % 3D-Optik Einstellungen
-    shading interp;          % Glatte Farben (statt 'faceted' oder 'flat')
-    colormap(jet);
-    caxis(cLim);
-    colorbar;
-    
-    % Achsen fixieren
-    zlim([cLim(1), 10]);     % Z-Achse von -60 bis +10 dB
-    xlim([1 cols]);
-    ylim([1 rows]);
-    
-    % Ansicht einstellen (Azimuth, Elevation)
-    view(-35, 45); 
-    
-    % Beschriftung
-    xlabel('Spalten');
-    ylabel('Zeilen');
-    zlabel('Pegel [dBFS]');
-    grid on;
-    
-    % Titel-Objekt
-    hTitle = title('', 'FontSize', 14, 'FontWeight', 'bold');
-    
-    nFrames = length(timePoints);
-    fprintf('  Erstelle Frames (%d Schritte)...\n', nFrames);
-    reverseStr = '';
-    tStart = tic;
-    
-    % 4. Frames generieren
-    for t_idx = 1:nFrames
-        t_start = timePoints(t_idx);
-        t_end = t_start + winLen;
-        
-        idx_start = round(t_start * fs) + 1;
-        idx_end = round(t_end * fs);
-        
-        gridData = NaN(rows, cols);
-        
-        for r = 1:rows
-            for c = 1:cols
-                ir = irs{r,c};
-                if isempty(ir) || idx_start > length(ir)
-                    val = cLim(1); % Stille = Minimum
-                else
-                    curr_idx_end = min(length(ir), idx_end);
-                    segment = ir(idx_start:curr_idx_end);
-                    rms_val = sqrt(mean(segment.^2));
-                    val = 20 * log10((rms_val + eps) / MaxAmp_global);
-                    if val < cLim(1), val = cLim(1); end
-                end
-                gridData(r,c) = val;
-            end
-        end
-        
-        % 3D-Daten aktualisieren
-        set(hSurf, 'ZData', gridData, 'CData', gridData);
-        set(hTitle, 'String', sprintf('%s\nZeit: %.3f s', strrep(variante,'_',' '), t_start));
-        
-        frame = getframe(fig);
-        writeVideo(vObj, frame);
-        
-        % Fortschritt
-        if mod(t_idx, 5) == 0 || t_idx == nFrames
-            percent = t_idx / nFrames * 100;
-            elapsed = toc(tStart);
-            remTime = (elapsed / t_idx) * (nFrames - t_idx);
-            msg = sprintf('    Fortschritt: %3.0f%% (%d/%d) - Restzeit: %02.0f:%02.0f', ...
-                          percent, t_idx, nFrames, floor(remTime/60), mod(remTime, 60));
-            fprintf([reverseStr, msg]);
-            reverseStr = repmat('\b', 1, length(msg));
-        end
-    end
-    fprintf('\n');
-    
-    close(vObj);
-    close(fig);
-    fprintf('  Video gespeichert: %s\n', videoName);
-end
-fprintf('\nFertig.\n');
-
-%% ---------------- HILFSFUNKTIONEN ----------------
-function filePath = find_mat_file(dataDir, allFiles, variante, posName)
-    filePath = '';
-    if startsWith(posName, 'M')
-        posNum = extractAfter(posName, 'M');
-        pattern = ['^' regexptranslate('escape', variante) '(?i)[_,]Pos[_,]?0*' posNum '\.mat$'];
-        idx = find(~cellfun(@isempty, regexp(allFiles, pattern, 'once')), 1);
-        if ~isempty(idx), filePath = fullfile(dataDir, allFiles{idx}); end
-    elseif startsWith(posName, 'Q')
-        pattern = ['^' regexptranslate('escape', variante) '(?i)[_,]Quelle\.mat$'];
-        idx = find(~cellfun(@isempty, regexp(allFiles, pattern, 'once')), 1);
-        if ~isempty(idx), filePath = fullfile(dataDir, allFiles{idx}); end
-    end
-end
-
-function ir = extractIR(S)
-    ir = [];
-    if isfield(S,'RiR') && ~isempty(S.RiR), ir = double(S.RiR(:));
-    elseif isfield(S,'RIR') && ~isempty(S.RIR), ir = double(S.RIR(:));
-    elseif isfield(S,'aufn') && ~isempty(S.aufn), ir = double(S.aufn(:));
     else
-        fns = fieldnames(S);
-        for f = 1:numel(fns)
-            fname = fns{f};
-            if startsWith(fname, '__'), continue; end
-            v = S.(fname);
-            if isnumeric(v) && numel(v) > 1000, ir = double(v(:)); return; end
+        % Simulation (Backup)
+        dist = sqrt(micMap(i,2)^2 + micMap(i,3)^2);
+        delay = round((dist/343)*actualFs);
+        if delay < numSamples
+             rawData(delay, i) = 1; % Dirac
         end
     end
 end
 
-function [ir_trunc, start_idx, end_idx, E_ratio, SNR_dB, dynamic_range_dB] = truncateIR(ir)
-    ir_abs = abs(ir);
-    max_amp = max(ir_abs);
-    start_idx = find(ir_abs > max_amp * 0.01, 1, 'first'); 
-    if isempty(start_idx), start_idx = 1; end
-    ir_trunc = ir(start_idx:end); 
-    end_idx = length(ir); E_ratio=0; SNR_dB=0; dynamic_range_dB=0;
+%% 5. FILTERUNG & ENVELOPE
+fprintf('Filtere auf %d Hz...\n', selFreq);
+
+% 5.1 Nyquist Check
+if selFreq * 1.15 > actualFs/2
+    error('Frequenz %d Hz ist zu hoch für Samplerate %d Hz (Nyquist)!', selFreq, actualFs);
 end
+
+% 5.2 Terz-Filter (Butterworth Bandpass)
+f_lo = selFreq * 2^(-1/6);
+f_hi = selFreq * 2^(1/6);
+[b, a] = butter(4, [f_lo f_hi]/(actualFs/2), 'bandpass');
+
+% Wichtig: filtfilt verwenden für 0 Phasenverschiebung (Zeitkorrektheit!)
+filtData = filtfilt(b, a, rawData);
+
+% 5.3 Hüllkurve (Envelope)
+% Wir glätten das Signal extrem fein, um die Energiefront zu sehen.
+% Fenster: ca. 0.2 ms (damit Impulse scharf bleiben)
+winS = round(0.0002 * actualFs); 
+if winS < 1, winS = 1; end
+
+% Envelope: Wurzel aus gleitendem Mittelwert des Quadrats
+envData = sqrt(movmean(filtData.^2, winS, 1));
+
+% Normierung auf Max dieses Zeitfensters (für beste Sichtbarkeit)
+envData = envData / (max(envData(:)) + 1e-9);
+
+%% 6. VIDEO RENDERING (Zeitlupe)
+fprintf('Rendere Video...\n');
+
+% Grid Interpolation
+pad = 0.5;
+xLin = linspace(-pad, max
