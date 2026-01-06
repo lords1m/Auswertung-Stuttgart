@@ -6,6 +6,14 @@ Variante 1 = Ohne Elemente, Ohne Deckel
 Variante 2 = Ohne Elemente, Mit Deckel
 Variante 3 = Mit Absorber, Ohne Deckel
 Variante 4 = Mit Balkonen, Ohne Deckel
+
+Anordnung der positionen (ZY)
+
+[ M1 ]  [ M2 ]  [ M3 ]    [ M4 ]
+
+[ M5 ]  [ M6 ]  [ M7 ]    [ M8 ]
+[ M9 ]  [ M10]  [ M11]    [ M12]
+[ Q1 ]  [ M13]  [ M14]    [ M15]
 ---
 
 Alle Plots stellen den bereich 4k - 60k dar. 

@@ -1,16 +1,46 @@
-%% ============================================================
-%  Terzband-Nachhallzeit (RT60) aus RIR-Dateien
+%% ============================================================ 
+%  Terzband-Nachhallzeit (RT60) aus RIR-Dateien (Angepasst)
+% 
 %  Methode: Schroeder-Integration + T20
-%  Ausgabe: RT60-Matrix [14 x 48]
-%  Export: Excel (.xlsx)
-% ============================================================
+%  Struktur:
+%  1. Stufe: Verarbeitet jede ausgewählte Variante, berechnet RT60 für
+%     jede Position, speichert Ergebnisse in Excel und plottet
+%     Einzel- und Mittelwert-RT60.
+%  2. Stufe: Vergleicht die Mittelwerte aller verarbeiteten Varianten
+%     in einem finalen Gesamtplot.
+% 
+%  Anpassungen:
+%  - Lädt .mat Dateien aus zentralem /data Ordner
+%  - Speichert alle Ausgaben in /Plots und /Excel
+%  - Flexible Auswahl von Varianten und Positionen
+% ============================================================ 
 
 clear;
 clc;
+close all;
 
-%% ---------------- Einstellungen ----------------
-nMess = 14;
-fs = 500e3;        % Abtastrate [Hz]
+% Stelle sicher, dass wir im richtigen Verzeichnis sind
+scriptDir = fileparts(mfilename('fullpath'));
+if ~isempty(scriptDir)
+    cd(scriptDir);
+end
+fprintf('Arbeitsverzeichnis: %s\n', pwd);
+
+%% ---------------- Einstellungen (anpassen) ----------------
+dataDir = 'data';
+outputPlotDir = 'Plots';
+outputExcelDir = 'Excel';
+
+% Varianten zum Verarbeiten (leer = automatisch alle außer '_alt' suchen)
+selectedVariants = {'Variante_4'};  % z.B. {'Variante_1', 'Variante_2'} oder {} für Auto
+excludePattern = '_alt'; % Ausschlussmuster für Varianten
+
+% Positionen (Messpunkte) auswählen
+selectedPositions = 1:14;   % z.B. [1 3 5] oder 1:14
+fs = 500e3;                 % Abtastrate [Hz]
+
+% Positionen, die für den Mittelwert pro Variante verwendet werden
+positions_to_average = [5, 6, 7, 9, 10, 11, 13, 14];
 
 % Normgerechte 1/3-Oktav-Mittenfrequenzen (IEC 61260)
 f_terz = double([ ...
@@ -19,312 +49,207 @@ f_terz = double([ ...
     9000 10000 11200 12500 14000 16000 18000 20000 22400 25000 ...
     28000 31500 35500 40000 45000 50000 56000 63000 71000 80000 ...
     90000 100000 112000 126000 ]);
+nFreq = numel(f_terz);
 
-filterOrder = 4;
+%% ---------------- Setup & Varianten ermitteln ----------------
+if ~exist(dataDir, 'dir'), error('Datenordner "%s" nicht gefunden!', dataDir); end
+if ~exist(outputPlotDir,'dir'), mkdir(outputPlotDir); end
+if ~exist(outputExcelDir,'dir'), mkdir(outputExcelDir); end
 
-% Alle Variante_x Ordner finden
-variantFolders = dir('Variante_*');
-variantFolders = variantFolders([variantFolders.isdir]);
+dirInfo = dir(fullfile(dataDir, '*.mat'));
+matFiles = {dirInfo.name};
+if isempty(matFiles), error('Keine .mat-Dateien im Ordner "%s" gefunden!', dataDir); end
 
-% Nur Ordner ab 'Variante_X' verarbeiten
-startFolder = 'Variante_1_neu';
-variantNames = {variantFolders.name};
-startIdx = find(strcmp(variantNames, startFolder), 1);
+fprintf('Gefundene .mat-Dateien: %d\n', numel(matFiles));
 
-if isempty(startIdx)
-    warning('Startordner "%s" nicht gefunden. Alle Varianten werden verarbeitet.', startFolder);
-else
-    variantFolders = variantFolders(startIdx:end);
-    fprintf('Starte Verarbeitung ab: %s\n', startFolder);
+% Varianten aus Dateinamen extrahieren
+variantNamesRaw = cell(numel(matFiles), 1);
+validIdx = false(numel(matFiles), 1);
+for i = 1:numel(matFiles)
+    tokens = regexp(matFiles{i}, '^([^,]+?)(?:_neu)?[,_]Pos', 'tokens', 'once');
+    if ~isempty(tokens)
+        variantName = tokens{1};
+        if isempty(excludePattern) || ~contains(variantName, excludePattern)
+            variantNamesRaw{i} = variantName;
+            validIdx(i) = true;
+        end
+    end
+end
+variantNames = unique(variantNamesRaw(validIdx));
+
+if ~isempty(selectedVariants)
+    variantNames = intersect(variantNames, selectedVariants, 'stable');
 end
 
-if isempty(variantFolders)
-    error('Keine Variante_x Ordner gefunden!');
-end
+if isempty(variantNames), error('Keine Varianten zum Verarbeiten gefunden (nach Filter).'); end
 
-fprintf('Gefundene Varianten: %d\n', length(variantFolders));
-for v = 1:length(variantFolders)
-    fprintf('  - %s\n', variantFolders(v).name);
-end
+fprintf('\nVerarbeite Varianten:\n');
+fprintf('  - %s\n', variantNames{:});
 
-%% ---------------- Verarbeitung aller Varianten ----------------
+% Erstelle File-Lookup-Map für schnelleren Zugriff
+fileMap = buildFileMap(matFiles, variantNames, selectedPositions);
 
-for varIdx = 1:length(variantFolders)
 
-    variantName = variantFolders(varIdx).name;
+%% ========================================================================
+%  Stufe 1: Verarbeitung pro Variante
+% ========================================================================
+
+for vi = 1:numel(variantNames)
+    variantName = variantNames{vi};
     fprintf('\n========================================\n');
     fprintf('Verarbeite %s...\n', variantName);
     fprintf('========================================\n');
 
-    % Dateinamenmuster für diese Variante
-    filePattern = sprintf('%s/%s,Pos_%%d.mat', variantName, variantName);
+    nPos = numel(selectedPositions);
+    RT60_data = NaN(nPos, nFreq);   % [Messung x Terzband] 
 
-%% ---------------- Speicher ----------------
-nFreq = numel(f_terz);
-RT60_data = NaN(nMess, nFreq);   % [Messung x Terzband]
-
-%% ---------------- Verarbeitung ----------------
-for i = 1:nMess
-
-    filename = sprintf(filePattern, i);
-    data = load(filename,'RIR');
-
-    if ~isfield(data,'RIR')
-        error('Datei %s enthält keinen Vektor "RIR".', filename);
-    end
-
-    ir = data.RIR(:);
-
-    % --- Lundeby-Truncation: Finde Rauschgrenze ---
-    % Einfache Methode: Finde wo Signal unter Rauschpegel fällt
-    ir_abs = abs(ir);
-    max_amp = max(ir_abs);
-
-    % Rauschpegel aus letzten 10% schätzen
-    noise_samples = ir_abs(end-round(length(ir)*0.1):end);
-    noise_level = mean(noise_samples) + 3*std(noise_samples);
-
-    % Finde letzten signifikanten Peak (mindestens 10x über Rauschpegel)
-    threshold = max(noise_level * 10, max_amp * 0.001);  % mindestens -60 dB
-    sig_idx = find(ir_abs > threshold, 1, 'last');
-
-    if isempty(sig_idx) || sig_idx < 100
-        sig_idx = length(ir);  % Falls keine Truncation möglich
-    else
-        % Sicherheitsmarge: 20% zusätzlich
-        sig_idx = min(length(ir), round(sig_idx * 1.2));
-    end
-
-    % Truncierte Impulsantwort
-    ir_trunc = ir(1:sig_idx);
-    t = (0:length(ir_trunc)-1)'/fs;
-
-    for k = 1:nFreq
-
-        % --- Terzband-Grenzen ---
-        f1 = f_terz(k) / 2^(1/6);
-        f2 = f_terz(k) * 2^(1/6);
-        Wn = [f1 f2] / (fs/2);
-
-        if Wn(2) >= 1
-            continue;   % oberhalb Nyquist
-        end
-
-        % --- Terzbandfilter ---
-        [b,a] = butter(filterOrder/2, Wn, 'bandpass');
-        ir_filt = filtfilt(b,a,ir_trunc);
-
-        % --- Schroeder-Integration ---
-        E = flipud(cumsum(flipud(ir_filt.^2)));
-
-        % Energie muss > 0 sein für Log
-        if max(E) == 0
+    for pi = 1:nPos
+        pos = selectedPositions(pi);
+        fname = getFileFromMap(fileMap, variantName, pos);
+        
+        if isempty(fname)
+            warning('Keine Datei für Pos %d in %s gefunden. Position übersprungen.', pos, variantName);
             continue;
         end
 
-        E = E / max(E);  % Normierung
-        E_dB = 10*log10(E + eps);
-
-        % --- T20-Bereich ---
-        idx = find(E_dB <= -5 & E_dB >= -25);
-
-        if numel(idx) < 10
+        fprintf('  Verarbeite: %s, Pos %d\n', variantName, pos);
+        
+        S = load(fullfile(dataDir, fname));
+        ir = extractIR(S);
+        
+        if isempty(ir)
+            warning('Datei %s enthält keinen erkennbaren IR-Vektor. Übersprungen.', fname);
             continue;
         end
 
-        % --- Lineare Regression ---
-        p = polyfit(t(idx), E_dB(idx), 1);
-
-        % Steigung muss negativ sein (Abfall)
-        if p(1) >= 0
-            continue;
+        % RT60-Berechnung für jedes Terzband
+        for k = 1:nFreq
+            RT60_data(pi,k) = calculate_rt60_band(ir, f_terz(k), fs);
         end
-
-        % --- RT60 ---
-        RT60_data(i,k) = -60 / p(1);   % Sekunden
     end
+
+    % --- Excel-Export ---
+    rowNames = compose('Pos_%02d', selectedPositions);
+    colNames = compose('F%.0f', f_terz);
+    T_RT60 = array2table(RT60_data, 'RowNames', rowNames, 'VariableNames', colNames);
+    excelFile = fullfile(outputExcelDir, sprintf('RT60_%s.xlsx', variantName));
+    try
+        writetable(T_RT60, excelFile, 'WriteRowNames', true);
+        fprintf('Excel geschrieben: %s\n', excelFile);
+    catch ME
+        warning(ME.identifier, 'Konnte Excel nicht schreiben: %s', ME.message);
+    end
+
+    % --- Plots pro Variante ---
+    y_min_RT60 = min(RT60_data(:), [], 'omitnan');
+    y_max_RT60 = max(RT60_data(:), [], 'omitnan');
+    y_range_RT60 = [floor(y_min_RT60*10)/10, ceil(y_max_RT60*10)/10];
+    if isempty(y_range_RT60) || any(isinf(y_range_RT60)) || any(isnan(y_range_RT60)), y_range_RT60 = [0 1]; end
+    
+    xtick_vals = [4000 5000 10000 20000 50000 60000];
+    xtick_labels = {'4k', '5k', '10k', '20k', '50k', '60k'};
+    f_lim = [4000 60000];
+    
+    % Plot 1: RT60 pro Position
+    for pi = 1:nPos
+        pos = selectedPositions(pi);
+        if all(isnan(RT60_data(pi, :))), continue; end
+        
+        fig = figure('Visible','off', 'Position', [100, 100, 1000, 500]);
+        stairs(f_terz, RT60_data(pi,:), 'LineWidth', 2);
+        grid on;
+        set(gca, 'XScale', 'log');
+        xlabel('Frequenz [Hz]'); ylabel('Nachhallzeit RT60 [s]');
+        title(sprintf('RT60 - %s - Position %02d', variantName, pos));
+        xlim(f_lim); ylim(y_range_RT60);
+        xticks(xtick_vals); xticklabels(xtick_labels);
+
+        filename = fullfile(outputPlotDir, sprintf('RT60_%s_Pos_%02d', variantName, pos));
+        saveas(fig, [filename '.png']);
+        close(fig);
+    end
+
+    % Plot 2: Mittelwert ausgewählter Positionen
+    % Stellen sicher, dass die zu mittelnden Positionen auch in selectedPositions enthalten sind
+    avg_pos_indices = find(ismember(selectedPositions, positions_to_average));
+    if ~isempty(avg_pos_indices)
+        RT60_mean = mean(RT60_data(avg_pos_indices, :), 1, 'omitnan');
+
+        fig_mean = figure('Visible','off', 'Position', [100, 100, 1000, 500]);
+        stairs(f_terz, RT60_mean, 'LineWidth', 2.5, 'Color', [0.8500 0.3250 0.0980]);
+        grid on;
+        set(gca, 'XScale', 'log');
+        xlabel('Frequenz [Hz]'); ylabel('Nachhallzeit RT60 [s]');
+        title(sprintf('%s - Gemittelte RT60', strrep(variantName,'_',' ')));
+        xlim(f_lim); ylim(y_range_RT60);
+        xticks(xtick_vals); xticklabels(xtick_labels);
+        
+        filename_mean = fullfile(outputPlotDir, sprintf('RT60_%s_Mittelwert', variantName));
+        saveas(fig_mean, [filename_mean '.png']);
+        close(fig_mean);
+        fprintf('Mittelwert-Plot erstellt: %s.png\n', filename_mean);
+    end
+    fprintf('%s abgeschlossen!\n', variantName);
 end
 
-%% ---------------- Excel-Export ----------------
-
-% Zeilen- und Spaltennamen (kurz & MATLAB-sicher)
-rowNames = arrayfun(@(x) sprintf('Pos_%02d', x), 1:nMess, ...
-                    'UniformOutput', false);
-
-colNames = arrayfun(@(f) sprintf('F%.0f', f), f_terz, ...
-                    'UniformOutput', false);
-
-T_RT60 = array2table(RT60_data, ...
-    'RowNames', rowNames, ...
-    'VariableNames', colNames);
-
-% Excel in Varianten-Ordner speichern
-excelFile = fullfile(variantName, 'RT60_Terzband.xlsx');
-writetable(T_RT60, excelFile, 'WriteRowNames', true);
-
-%% ---------------- Plot: RT60 pro Position ----------------
-
-% Globale Y-Achsen-Grenzen bestimmen (für Vergleichbarkeit)
-y_min_RT60 = min(RT60_data(:), [], 'omitnan');
-y_max_RT60 = max(RT60_data(:), [], 'omitnan');
-y_range_RT60 = [floor(y_min_RT60*10)/10, ceil(y_max_RT60*10)/10];
-
-for i = 1:nMess
-    fig = figure('Position', [100, 100, 1000, 500]);
-
-    % RT60 als Stairs-Diagramm
-    stairs(f_terz, RT60_data(i,:), ...
-           'LineWidth', 2, ...
-           'Color', [0 0.4470 0.7410]);
-
-    grid on;
-    set(gca, 'XScale', 'log');
-    xlabel('Frequenz [Hz]');
-    ylabel('Nachhallzeit RT60 [s]');
-    title(sprintf('RT60 - Position %02d', i));
-    xlim([4000 60000]);
-    ylim(y_range_RT60);
-
-    % Formatierung der x-Achse
-    xticks([4000 5000 10000 20000 50000 60000]);
-    xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
-
-    % Plot in Varianten-Ordner speichern
-    filename = fullfile(variantName, sprintf('RT60_Pos_%02d', i));
-    saveas(fig, [filename '.png']);
-    saveas(fig, [filename '.fig']);
-
-    fprintf('Plot erstellt: %s.png\n', filename);
-end
-
-% Alle RT60-Figuren schließen
-close all;
-
-disp('Alle RT60-Plots erstellt und gespeichert.');
-
-%% ---------------- Mittelwert ausgewählter Positionen ----------------
-
-% Positionen die gemittelt werden sollen
-positions_to_average = [5, 6, 7, 9, 10, 11, 13, 14];
-
-% Mittelwert über die ausgewählten Positionen berechnen
-RT60_mean = mean(RT60_data(positions_to_average, :), 1, 'omitnan');
-
-% Plot erstellen
-fig_mean = figure('Position', [100, 100, 1000, 500]);
-
-stairs(f_terz, RT60_mean, ...
-       'LineWidth', 2.5, ...
-       'Color', [0.8500 0.3250 0.0980]);  % Orange für Mittelwert
-
-grid on;
-set(gca, 'XScale', 'log');
-xlabel('Frequenz [Hz]');
-ylabel('Nachhallzeit RT60 [s]');
-title(sprintf('%s - Gemittelte RT60 (Pos. 5,6,7,9,10,11,13,14)', variantName));
-xlim([4000 60000]);
-ylim(y_range_RT60);
-
-% Formatierung der x-Achse
-xticks([4000 5000 10000 20000 50000 60000]);
-xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
-
-% Plot in Varianten-Ordner speichern
-filename_mean = fullfile(variantName, 'RT60_Mittelwert');
-saveas(fig_mean, [filename_mean '.png']);
-saveas(fig_mean, [filename_mean '.fig']);
-
-fprintf('Mittelwert-Plot erstellt: %s.png\n', filename_mean);
-close(fig_mean);
-
-fprintf('\n%s abgeschlossen!\n', variantName);
-
-end  % Ende der Varianten-Schleife
-
-disp('========================================');
-disp('Alle Varianten erfolgreich verarbeitet!');
-disp('========================================');
-
-%% ---------------- Vergleich der Mittelwerte aller Varianten ----------------
-
-% Varianten die verglichen werden sollen
-variantsToCompare = {'Variante_1_neu', 'Variante_2', 'Variante_3', 'Variante_4'};
-nVariants = length(variantsToCompare);
-
-% Positionen die gemittelt werden sollen (wie oben definiert)
-positions_to_average = [5, 6, 7, 9, 10, 11, 13, 14];
-
-% Speicher für Mittelwerte aller Varianten
-RT60_means = NaN(nVariants, nFreq);
-
-% Lade die gespeicherten RT60-Daten aus den Excel-Dateien
+%% ========================================================================
+%  Stufe 2: Vergleich der Mittelwerte aller verarbeiteten Varianten
+% ========================================================================
 fprintf('\n========================================\n');
 fprintf('Lade RT60-Daten für Variantenvergleich...\n');
 fprintf('========================================\n');
 
-for v = 1:nVariants
-    varName = variantsToCompare{v};
-    excelPath = fullfile(varName, 'RT60_Terzband.xlsx');
+RT60_means = NaN(numel(variantNames), nFreq);
+
+for vi = 1:numel(variantNames)
+    varName = variantNames{vi};
+    excelPath = fullfile(outputExcelDir, sprintf('RT60_%s.xlsx', varName));
 
     if exist(excelPath, 'file')
-        % Excel-Datei einlesen (erste Spalte sind Zeilennamen)
         T = readtable(excelPath, 'ReadRowNames', true);
-        RT60_matrix = table2array(T);
-
-        % Mittelwert über ausgewählte Positionen berechnen
-        RT60_means(v, :) = mean(RT60_matrix(positions_to_average, :), 1, 'omitnan');
-
-        fprintf('✓ %s geladen\n', varName);
+        
+        % Finde die Indizes der zu mittelnden Positionen in der Tabelle
+        posInTable = T.Properties.RowNames; % z.B. {'Pos_01', ...}
+        posToAvgStr = compose('Pos_%02d', positions_to_average);
+        [~, avg_indices] = intersect(posInTable, posToAvgStr);
+        
+        if ~isempty(avg_indices)
+            RT60_matrix = table2array(T);
+            RT60_means(vi, :) = mean(RT60_matrix(avg_indices, :), 1, 'omitnan');
+            fprintf('✓ %s geladen und gemittelt\n', varName);
+        else
+            warning('Für %s konnten keine der Positionen für den Mittelwert in der Excel-Datei gefunden werden.', varName);
+        end
     else
-        warning('Datei nicht gefunden: %s', excelPath);
+        warning('Excel-Datei nicht gefunden für den Vergleich: %s', excelPath);
     end
 end
 
 % Plot erstellen: Vergleich aller Varianten
-fig_compare = figure('Position', [100, 100, 1200, 600]);
-
-% Farben für verschiedene Varianten
-colors = [
-    0.0000 0.4470 0.7410;  % Blau - Variante 1_neu
-    0.8500 0.3250 0.0980;  % Orange - Variante 2
-    0.9290 0.6940 0.1250;  % Gelb - Variante 3
-    0.4940 0.1840 0.5560   % Lila - Variante 4
-];
-
+fig_compare = figure('Visible','on', 'Position', [100, 100, 1200, 600]);
 hold on;
-legend_entries = {};
-
-for v = 1:nVariants
-    stairs(f_terz, RT60_means(v, :), ...
-           'LineWidth', 2.5, ...
-           'Color', colors(v, :), ...
-           'DisplayName', variantsToCompare{v});
-    legend_entries{v} = strrep(variantsToCompare{v}, '_', ' ');
+for vi = 1:numel(variantNames)
+    if ~all(isnan(RT60_means(vi,:)))
+        stairs(f_terz, RT60_means(vi, :), 'LineWidth', 2.5, 'DisplayName', strrep(variantNames{vi}, '_', ' '));
+    end
 end
-
 hold off;
 
 grid on;
 set(gca, 'XScale', 'log');
 xlabel('Frequenz [Hz]', 'FontSize', 12);
 ylabel('Nachhallzeit RT60 [s]', 'FontSize', 12);
-title('Vergleich RT60-Mittelwerte aller Varianten (Pos. 5,6,7,9,10,11,13,14)', 'FontSize', 14);
-xlim([4000 60000]);
+title('Vergleich der RT60-Mittelwerte aller Varianten', 'FontSize', 14);
+xlim(f_lim);
 
-% Y-Achse: Dynamisch an Daten anpassen
-y_min_all = min(RT60_means(:), [], 'omitnan');
-y_max_all = max(RT60_means(:), [], 'omitnan');
-ylim([floor(y_min_all*10)/10, ceil(y_max_all*10)/10]);
+ y_min_all = min(RT60_means(:), [], 'omitnan');
+ y_max_all = max(RT60_means(:), [], 'omitnan');
+ if ~isempty(y_min_all) && ~isempty(y_max_all), ylim([floor(y_min_all*10)/10, ceil(y_max_all*10)/10]); end
 
-% Formatierung der x-Achse
-xticks([4000 5000 10000 20000 50000 60000]);
-xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
+xticks(xtick_vals); xticklabels(xtick_labels);
+legend('Location', 'best', 'FontSize', 11);
 
-% Legende
-legend(legend_entries, 'Location', 'best', 'FontSize', 11);
-
-% Plot speichern
-filename_compare = 'Vergleich_RT60_Mittelwerte_alle_Varianten';
+filename_compare = fullfile(outputPlotDir, 'Vergleich_RT60_Mittelwerte_Alle_Varianten');
 saveas(fig_compare, [filename_compare '.png']);
 saveas(fig_compare, [filename_compare '.fig']);
 
@@ -333,10 +258,132 @@ fprintf('Vergleichsplot erstellt: %s.png\n', filename_compare);
 fprintf('========================================\n');
 
 close(fig_compare);
+disp('Alle Varianten erfolgreich verarbeitet!');
+
+%% ========================================================================
+%  HILFSFUNKTIONEN
+% ========================================================================
+
+function rt60 = calculate_rt60_band(ir, f_center, fs)
+    filterOrder = 4;
+    rt60 = NaN;
+
+    % Terzband-Filter
+    f1 = f_center / 2^(1/6);
+    f2 = f_center * 2^(1/6);
+    Wn = [f1 f2] / (fs/2);
+    if Wn(2) >= 1, return; end
+    
+    % Umstellung auf SOS (Second-Order Sections) zur Vermeidung numerischer Instabilität
+    [sos, g] = butter(filterOrder/2, Wn, 'bandpass');
+    
+    % Einfache Truncation für die spezifische Berechnung
+    [ir_trunc, ~, ~, ~, ~, ~] = truncateIR(ir, fs);
+    
+    % Filterung mit SOS-Format
+    ir_filt = filtfilt(sos, g, ir_trunc);
+    t = (0:length(ir_trunc)-1)'/fs;
+
+    % Schroeder-Integration
+    E = flipud(cumsum(flipud(ir_filt.^2)));
+    if max(E) == 0, return; end
+    E_dB = 10*log10(E / max(E) + eps);
+
+    % T20-Bereich für die Regression
+    idx_upper = find(E_dB <= -5, 1, 'first');
+    idx_lower = find(E_dB <= -25, 1, 'first');
+    if isempty(idx_upper) || isempty(idx_lower) || (idx_lower - idx_upper < 10), return; end
+    idx = idx_upper:idx_lower;
+
+    % Lineare Regression
+    p = polyfit(t(idx), E_dB(idx), 1);
+    if p(1) >= 0, return; end % Steigung muss negativ sein
+
+    rt60 = -60 / p(1);
+end
 
 
-%[appendix]{"version":"1.0"}
-%---
-%[metadata:view]
-%   data: {"layout":"onright","rightPanelPercent":40}
-%---
+function fileMap = buildFileMap(matFiles, variantNames, positions)
+    nVariants = numel(variantNames);
+    maxPos = max(positions);
+    fileMap = cell(nVariants, maxPos);
+    
+    for i = 1:numel(matFiles)
+        fname = matFiles{i};
+        
+        for vi = 1:nVariants
+            if startsWith(fname, variantNames{vi})
+                tok = regexp(fname, 'Pos[_,]?(\d+)', 'tokens', 'once');
+                if ~isempty(tok)
+                    posNum = str2double(tok{1});
+                    if ismember(posNum, positions)
+                        fileMap{vi, posNum} = fname;
+                    end
+                end
+                break;
+            end
+        end
+    end
+end
+
+function fname = getFileFromMap(fileMap, variantName, pos)
+    [nVariants, ~] = size(fileMap);
+    
+    for vi = 1:nVariants
+       if ~isempty(fileMap{vi,pos})
+           % Quick check based on variant name start - assumes buildFileMap order
+           if startsWith(fileMap{vi,pos}, variantName)
+               fname = fileMap{vi,pos};
+               return;
+           end
+       end
+    end
+    fname = ''; % Fallback if not found
+end
+
+function ir = extractIR(S)
+    ir = [];
+    if isfield(S,'RiR') && ~isempty(S.RiR), ir = double(S.RiR(:));
+    elseif isfield(S,'RIR') && ~isempty(S.RIR), ir = double(S.RIR(:));
+    else
+        fns = fieldnames(S);
+        for f = 1:numel(fns)
+            fname = fns{f};
+            if startsWith(fname, '__'), continue; end
+            v = S.(fname);
+            if isnumeric(v) && numel(v) > 1000, ir = double(v(:)); return; end
+        end
+    end
+    if ~isempty(ir) && numel(ir) < 2, ir = []; end
+end
+
+function [ir_trunc, start_idx, end_idx, E_ratio, SNR_dB, dynamic_range_dB] = truncateIR(ir, fs)
+    N_original = length(ir);
+    ir_abs = abs(ir);
+    max_amp = max(ir_abs);
+    if max_amp == 0, ir_trunc = ir; start_idx=1; end_idx=N_original; E_ratio=100; SNR_dB=0; dynamic_range_dB=0; return; end
+
+    noise_samples = ir_abs(end-round(N_original*0.1):end);
+    noise_level = mean(noise_samples);
+    noise_rms = std(noise_samples);
+
+    threshold = max((noise_level + 3*noise_rms) * 10, max_amp * 0.001);
+    sig_idx = find(ir_abs > threshold, 1, 'last');
+
+    if isempty(sig_idx) || sig_idx < 100, end_idx = N_original;
+    else, end_idx = min(N_original, round(sig_idx * 1.2)); end
+
+    start_threshold = max_amp * 0.05;
+    start_idx = find(ir_abs > start_threshold, 1, 'first');
+    if isempty(start_idx) || start_idx < 1, start_idx = 1; end
+
+    ir_trunc = ir(start_idx:end_idx);
+    
+    E_original = sum(ir.^2);
+    E_truncated = sum(ir_trunc.^2);
+    if E_original == 0, E_ratio = 100; else, E_ratio = E_truncated / E_original * 100; end
+
+    signal_rms = sqrt(mean(ir_trunc.^2));
+    SNR_dB = 20*log10(signal_rms / (noise_rms + eps));
+    dynamic_range_dB = 20*log10(max_amp / (noise_level + eps));
+end
