@@ -1,0 +1,227 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 HelveticaNeue-Bold;\f2\fnil\fcharset0 HelveticaNeue;
+\f3\fmodern\fcharset0 Courier;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red193\green193\blue193;\red64\green153\blue253;
+\red198\green198\blue197;}
+{\*\expandedcolortbl;;\cssrgb\c0\c1\c1;\cssrgb\c80176\c80176\c79976;\cssrgb\c30744\c67324\c99405;
+\cssrgb\c81748\c81748\c81544;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid2\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid301\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid302\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid4}
+{\list\listtemplateid5\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid401\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid5}
+{\list\listtemplateid6\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid501\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid6}
+{\list\listtemplateid7\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid601\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid7}
+{\list\listtemplateid8\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat0\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid701\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid8}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}{\listoverride\listid5\listoverridecount0\ls5}{\listoverride\listid6\listoverridecount0\ls6}{\listoverride\listid7\listoverridecount0\ls7}{\listoverride\listid8\listoverridecount0\ls8}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww28600\viewh14920\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf2 Variante 1 = Ohne Elemente, Ohne Deckel\
+Variante 2 = Ohne Elemente, Mit Deckel\
+Variante 3 = Mit Absorber, Ohne Deckel\
+Variante 4 = Mit Balkonen, Ohne Deckel\
+\
+\pard\pardeftab720\sa348\partightenfactor0
+
+\f1\b\fs52 \cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Erkl\'e4rung der RT60-Berechnung\
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 Dieses MATLAB-Skript berechnet die\'a0
+\f1\b \cf2 \strokec3 Nachhallzeit RT60
+\f2\b0 \cf2 \strokec3 \'a0in Terzb\'e4ndern aus Raumimpulsantworten (Room Impulse Responses, RIR). Hier eine detaillierte Erkl\'e4rung der Methode:
+\f1\b\fs39 \cf2 \strokec3 \
+\pard\pardeftab720\sa323\partightenfactor0
+\cf2 \strokec3 Grundkonzept\
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 Die\'a0
+\f1\b \cf2 \strokec3 RT60
+\f2\b0 \cf2 \strokec3 \'a0(Reverberation Time) ist die Zeit, die aben\'f6tigt wird, bis die Schallenergie um\'a0
+\f1\b \cf2 \strokec3 60 dB
+\f2\b0 \cf2 \strokec3 \'a0abgefallen ist. Sie ist ein wichtiges Ma\'df f\'fcr die akustische Qualit\'e4t von R\'e4umen.
+\f1\b\fs39 \cf2 \strokec3 \
+\pard\pardeftab720\sa323\partightenfactor0
+\cf2 \strokec3 Verarbeitungsschritte\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\fs30\fsmilli15210 \cf2 \strokec3 1.\'a0
+\f2\b0 \cf2 \strokec3 Lundeby-Truncation
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L82-L105"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:82-105}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 ir_abs = abs(ir);\
+noise_level = mean(noise_samples) + 3*std(noise_samples);\
+threshold = max(noise_level * 10, max_amp * 0.001);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\f1\b\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Zweck
+\f2\b0 \cf2 \strokec3 : Entfernung des Rauschanteils am Ende der Impulsantwort\
+\ls1\ilvl0
+\f1\b \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Methode
+\f2\b0 \cf2 \strokec3 :\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\partightenfactor0
+\ls1\ilvl1\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Rauschpegel wird aus den letzten 10% der Messung gesch\'e4tzt\
+\ls1\ilvl1\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Signal wird abgeschnitten, wo es unter den Schwellwert (10\'d7 Rauschpegel) f\'e4llt\
+\ls1\ilvl1\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 20% Sicherheitsmarge wird hinzugef\'fcgt\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\f1\b\fs30\fsmilli15210 \cf2 \strokec3 2.\'a0
+\f2\b0 \cf2 \strokec3 Terzband-Filterung
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L112-L124"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:112-124}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 f1 = f_terz(k) / 2^(1/6);  % Untere Grenzfrequenz\
+f2 = f_terz(k) * 2^(1/6);  % Obere Grenzfrequenz\
+[b,a] = butter(filterOrder/2, Wn, 'bandpass');\
+ir_filt = filtfilt(b,a,ir_trunc);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0
+\f1\b\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Butterworth-Bandpass
+\f2\b0 \cf2 \strokec3 \'a04. Ordnung f\'fcr jedes Terzband\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Terzbandbreite: \'b11/6 Oktave um die Mittenfrequenz\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0
+\f3\fs23\fsmilli11700 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec5 filtfilt
+\f2\fs26 \cf2 \strokec3 \'a0sorgt f\'fcr phasenfreie Filterung\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\f1\b\fs30\fsmilli15210 \cf2 \strokec3 3.\'a0
+\f2\b0 \cf2 \strokec3 Schroeder-Integration
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L126-L133"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:126-133}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 E = flipud(cumsum(flipud(ir_filt.^2)));\
+E = E / max(E);  % Normierung\
+E_dB = 10*log10(E + eps);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls3\ilvl0
+\f1\b\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 R\'fcckw\'e4rts-Integration
+\f2\b0 \cf2 \strokec3 \'a0der quadrierten Impulsantwort\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls3\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Berechnet die\'a0
+\f1\b \cf2 \strokec3 verbleibende Energie
+\f2\b0 \cf2 \strokec3 \'a0zu jedem Zeitpunkt\
+\ls3\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Normierung auf 0 dB und Umrechnung in Dezibel\
+\ls3\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Gl\'e4ttet die Energiekurve (reduziert Schwankungen)\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\f1\b\fs30\fsmilli15210 \cf2 \strokec3 4.\'a0
+\f2\b0 \cf2 \strokec3 T20-Methode
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L135-L138"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:135-138}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 idx = find(E_dB <= -5 & E_dB >= -25);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls4\ilvl0
+\f2\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Verwendet nur den\'a0
+\f1\b \cf2 \strokec3 Bereich von -5 dB bis -25 dB
+\f2\b0 \cf2 \strokec3 \
+\ls4\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Vermeidet Probleme mit:\
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\partightenfactor0
+\ls4\ilvl1\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Direktschall am Anfang (zu verrauscht)\
+\ls4\ilvl1\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Rauschen am Ende (zu ungenau)\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\f1\b\fs30\fsmilli15210 \cf2 \strokec3 5.\'a0
+\f2\b0 \cf2 \strokec3 Lineare Regression
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L144-L146"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:144-146}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 p = polyfit(t(idx), E_dB(idx), 1);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls5\ilvl0
+\f2\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Bestimmt die\'a0
+\f1\b \cf2 \strokec3 Steigung
+\f2\b0 \cf2 \strokec3 \'a0des Energieabfalls\
+\ls5\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Polyfit 1. Grades = Gerade durch die Messpunkte\
+\pard\pardeftab720\sa304\partightenfactor0
+
+\f1\b\fs30\fsmilli15210 \cf2 \strokec3 6.\'a0
+\f2\b0 \cf2 \strokec3 RT60-Extrapolation
+\f1\b \cf2 \strokec3 \'a0({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L153"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:153}})\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 \
+\pard\pardeftab720\partightenfactor0
+
+\f3\fs23\fsmilli11700 \cf2 \strokec5 RT60_data(i,k) = -60 / p(1);\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls6\ilvl0
+\f1\b\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Formel
+\f2\b0 \cf2 \strokec3 : RT60 = -60 / Steigung\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls6\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Extrapoliert die gemessenen 20 dB auf 60 dB\
+\ls6\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Beispiel: Bei Steigung -30 dB/s \uc0\u8594  RT60 = 2 s\
+\pard\pardeftab720\sa323\partightenfactor0
+
+\f1\b\fs39 \cf2 \strokec3 Qualit\'e4tssicherung\
+\pard\pardeftab720\partightenfactor0
+
+\f2\b0\fs26 \cf2 \strokec3 Das Skript verwirft Messungen wenn:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls7\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Maximale Energie = 0 ({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L130"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:130}})\
+\ls7\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Weniger als 10 Datenpunkte im T20-Bereich ({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L140"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:140}})\
+\ls7\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Steigung positiv (kein Abfall) ({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L148"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:148}})\
+\ls7\ilvl0\cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Frequenz oberhalb Nyquist-Frequenz ({\field{\*\fldinst{HYPERLINK "vscode-webview://0ne603an4tn4e09eqp7cj6pvhcasgfh0lr0c6cfec1h0k0tnji59/RT_60.m#L119"}}{\fldrslt \cf2 \ul \ulc2 \strokec4 RT_60.m:119}})\
+\pard\pardeftab720\sa323\partightenfactor0
+
+\f1\b\fs39 \cf2 \strokec3 Ausgabe\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls8\ilvl0
+\fs26 \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Excel-Tabelle
+\f2\b0 \cf2 \strokec3 : 14 Positionen \'d7 48 Terzb\'e4nder (560 Hz - 126 kHz)\
+\ls8\ilvl0
+\f1\b \cf2 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\cf2 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Plots
+\f2\b0 \cf2 \strokec3 : Stairs-Diagramme f\'fcr jede Position mit logarithmischer Frequenzachse\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec3 Die Methode ist nach\'a0
+\f1\b \cf2 \strokec3 ISO 3382
+\f2\b0 \cf2 \strokec3 \'a0standardisiert und gilt als zuverl\'e4ssig f\'fcr Raumakustikmessungen.\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec3 \
+}
