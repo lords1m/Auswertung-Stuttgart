@@ -131,6 +131,8 @@ for vi = 1:numel(variantNames)
             ir = extractIR(S);
 
             if ~isempty(ir)
+                % Lundeby-Truncation auch für globale Referenz
+                [ir, ~, ~, ~] = truncateIR(ir);
                 N = numel(ir);
                 H_mag = abs(fft(ir, N));
                 FS_global = max(FS_global, max(H_mag(1:floor(N/2)+1)));
@@ -184,9 +186,15 @@ for vi = 1:numel(variantNames)
             continue;
         end
 
-        fprintf('  Position %02d ausgewertet\n', pos);
-
+        % --- Lundeby-Truncation: Finde Rauschgrenze ---
+        N_original = length(ir);
+        [ir, start_idx, end_idx, E_ratio] = truncateIR(ir);
         N = length(ir);
+
+        % Logging
+        fprintf('  Position %02d: Start=%d, Ende=%d (von %d), Länge=%d, Energie=%.2f%%\n', ...
+                pos, start_idx, end_idx, N_original, N, E_ratio);
+
         IR_fft = fft(ir);
         freq = (0:N-1) * (fs / N);
 
@@ -449,4 +457,43 @@ function ir = extractIR(S)
     if ~isempty(ir) && numel(ir) < 2
         ir = [];
     end
+end
+
+function [ir_trunc, start_idx, end_idx, E_ratio] = truncateIR(ir)
+    % Lundeby-Truncation: Findet Nutz-Signal-Bereich
+    % Gibt zurück: truncierte IR, Start-Index, End-Index, Energie-Verhältnis (%)
+
+    N_original = length(ir);
+    ir_abs = abs(ir);
+    max_amp = max(ir_abs);
+
+    % Rauschpegel aus letzten 10% schätzen
+    noise_samples = ir_abs(end-round(N_original*0.1):end);
+    noise_level = mean(noise_samples) + 3*std(noise_samples);
+
+    % Finde letzten signifikanten Peak (mindestens 10x über Rauschpegel)
+    threshold = max(noise_level * 10, max_amp * 0.001);  % mindestens -60 dB
+    sig_idx = find(ir_abs > threshold, 1, 'last');
+
+    if isempty(sig_idx) || sig_idx < 100
+        end_idx = N_original;  % Falls keine Truncation möglich
+    else
+        % Sicherheitsmarge: 20% zusätzlich
+        end_idx = min(N_original, round(sig_idx * 1.2));
+    end
+
+    % Finde Startzeitpunkt (erster signifikanter Peak)
+    start_threshold = max_amp * 0.05;  % 5% des Maximums
+    start_idx = find(ir_abs > start_threshold, 1, 'first');
+    if isempty(start_idx) || start_idx < 1
+        start_idx = 1;
+    end
+
+    % Truncierte Impulsantwort
+    ir_trunc = ir(start_idx:end_idx);
+
+    % Energie-Verhältnis
+    E_original = sum(ir.^2);
+    E_truncated = sum(ir_trunc.^2);
+    E_ratio = E_truncated / E_original * 100;
 end
