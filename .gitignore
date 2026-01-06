@@ -1,4 +1,6 @@
 *.zip
 *.xlsx
+Videos/
+Videos_3D
 Plots/
 data/
