@@ -6,25 +6,26 @@
 %   - selektive Auswahl von Varianten und Positionen
 %   - Ausgabe: alle Plots in Plots/, alle Excels in Excel/
 %   - Plot-Modus: 'absolute' oder 'difference' (Differenz gegen positionsmittleren Pegel)
+%   - Alle .mat-Dateien in einem gemeinsamen 'data'-Ordner
 % ============================================================
 
 clear;
 clc;
 
 % Stelle sicher, dass wir im richtigen Verzeichnis sind
-% (Falls Skript von anderem Ort aufgerufen wird)
 scriptDir = fileparts(mfilename('fullpath'));
 if ~isempty(scriptDir)
     cd(scriptDir);
-    fprintf('Arbeitsverzeichnis: %s\n', pwd);
-else
-    fprintf('Arbeitsverzeichnis: %s\n', pwd);
 end
+fprintf('Arbeitsverzeichnis: %s\n', pwd);
 
 %% ---------------- Einstellungen (anpassen) ----------------
-% Wenn empty -> automatisch alle Ordner 'Variante*_data' verwenden (ausser '*_alt')
-selectedVariants = {};     % e.g. {'Variante_1_data','Variante_3_data'} oder {} für Auto
-excludePattern = '*_alt';  % Ausschlussmuster
+% Datenordner mit allen .mat-Dateien
+dataDir = 'data';
+
+% Varianten zum Verarbeiten (leer = automatisch alle außer '_alt' suchen)
+selectedVariants = { 'Variante_2'};  % z.B. {'Variante_1', 'Variante_2'} oder {} für Auto
+excludePattern = '_alt';  % Ausschlussmuster für Varianten
 
 % Positionen (Messpunkte) auswählen
 selectedPositions = 1:14;   % z.B. [1 3 5] oder 1:14
@@ -48,30 +49,43 @@ f_terz = double([ ...
     28000 31500 35500 40000 45000 50000 56000 63000 71000 80000 ...
     90000 100000 112000 126000 ]);
 
-%% ---------------- Varianten-Entdeckung ----------------
-% Alle passende Variante-Ordner finden
-allDirs = dir();
-allVariantFolders = allDirs([allDirs.isdir]);
-% Filter nach Namen, die mit 'Variante' beginnen
-variantMask = startsWith({allVariantFolders.name}, 'Variante');
-allVariantFolders = allVariantFolders(variantMask);
-
-% Filtern nach '*_data' falls vorhanden
-dataMask = contains({allVariantFolders.name}, '_data');
-dataFolders = allVariantFolders(dataMask);
-
-if isempty(dataFolders)
-    % Fallback: alle 'Variante_*' verwenden
-    dataFolders = allVariantFolders;
+%% ---------------- Prüfe data-Ordner ----------------
+if ~exist(dataDir, 'dir')
+    error('Datenordner "%s" nicht gefunden!', dataDir);
 end
 
-variantNames = {dataFolders.name};
+%% ---------------- Dateien einlesen und Varianten ermitteln ----------------
+% Alle .mat-Dateien im data-Ordner finden (mit dir - effizienter als Java)
+dirInfo = dir(fullfile(dataDir, '*.mat'));
+matFiles = {dirInfo.name};
 
-% Entferne Ordner, die dem Ausschlussmuster entsprechen ('_alt')
-if ~isempty(excludePattern)
-    toKeep = ~contains(variantNames, '_alt');  % einfache Ausschlussmechanik
-    variantNames = variantNames(toKeep);
+if isempty(matFiles)
+    error('Keine .mat-Dateien im Ordner "%s" gefunden!', dataDir);
 end
+
+fprintf('Gefundene .mat-Dateien: %d\n', numel(matFiles));
+
+% Varianten aus Dateinamen extrahieren (mit unique statt Map)
+variantNames = cell(numel(matFiles), 1);
+validIdx = false(numel(matFiles), 1);
+
+for i = 1:numel(matFiles)
+    fname = matFiles{i};
+
+    % Extrahiere Variantenname vor dem ersten Komma oder 'Pos'
+    tokens = regexp(fname, '^([^,]+?)(?:_neu)?[,_]Pos', 'tokens', 'once');
+    if ~isempty(tokens)
+        variantName = tokens{1};
+
+        % Filtern nach excludePattern
+        if isempty(excludePattern) || ~contains(variantName, excludePattern)
+            variantNames{i} = variantName;
+            validIdx(i) = true;
+        end
+    end
+end
+
+variantNames = unique(variantNames(validIdx));
 
 % Wenn user spezifische Varianten gesetzt hat -> filter auf diese Liste
 if ~isempty(selectedVariants)
@@ -82,37 +96,20 @@ if isempty(variantNames)
     error('Keine Varianten zum Verarbeiten gefunden (nach Filter).');
 end
 
-fprintf('Verarbeite Varianten:\n');
-for i=1:numel(variantNames), fprintf('  - %s\n', variantNames{i}); end
+fprintf('\nVerarbeite Varianten:\n');
+fprintf('  - %s\n', variantNames{:});
 
-%% Debug: Überprüfe, welche Dateien in den Ordnern vorhanden sind
-fprintf('\n--- DEBUG: Dateien in den Ordnern ---\n');
-fprintf('Aktuelles Verzeichnis: %s\n', pwd);
+% Vorberechnung: Terzbandgrenzen
+nFreq = length(f_terz);
+f_lower = f_terz / 2^(1/6);
+f_upper = f_terz * 2^(1/6);
 
-% Teste was() um zu sehen, was existiert
-all_items = dir;
-fprintf('Alle Einträge im aktuellen Verzeichnis:\n');
-for i = 1:numel(all_items)
-    if all_items(i).isdir && contains(all_items(i).name, 'Variante')
-        fprintf('  [DIR] %s\n', all_items(i).name);
-        % Versuche, Unterordner zu lesen
-        try
-            subdir = dir(all_items(i).name);
-            mat_count = sum(endsWith({subdir.name}, '.mat'));
-            fprintf('    → %d .mat-Dateien\n', mat_count);
-        catch
-            fprintf('    → Fehler beim Lesen\n');
-        end
-    end
-end
-fprintf('---\n\n');
+% Erstelle File-Lookup-Map für schnelleren Zugriff
+fileMap = buildFileMap(matFiles, variantNames, selectedPositions);
 
 %% ---------------- Globale Referenz (FS) über alle ausgewählten Dateien finden ----------------
-% Flexibles Laden: sucht alle .mat-Dateien mit 'Pos' + Positionsnummer
-
 FS_global = 0;
-found_any = false;
-checkedFiles = {};
+checkedFiles = 0;
 
 fprintf('\nSuche globale Referenz in %d Varianten...\n', numel(variantNames));
 
@@ -120,102 +117,41 @@ for vi = 1:numel(variantNames)
     variantName = variantNames{vi};
     fprintf('  Prüfe Variante: %s\n', variantName);
 
-    % Verwende Java-API zum Auflisten von Dateien — zuverlässig in MATLAB auf macOS
-    matFiles = {};
-    try
-        jDir = java.io.File(variantName);
-        if jDir.exists() && jDir.isDirectory()
-            jFiles = jDir.listFiles();
-            for jf = 1:length(jFiles)
-                jn = char(jFiles(jf).getName());
-                if endsWith(jn, '.mat')
-                    matFiles{end+1} = jn; %#ok<SAGROW>
-                end
-            end
-        end
-    catch
-        matFiles = {};
-    end
-
-    if isempty(matFiles)
-        fprintf('    Keine .mat-Dateien gefunden\n');
-        continue;
-    end
-    fprintf('    Gefundene .mat-Dateien: %d\n', numel(matFiles));
-    
     for pos = selectedPositions
-        % Suche nach Datei mit 'Pos' und Positionsnummer
-        posStr = num2str(pos);
-        filename = '';
-        for mf = 1:numel(matFiles)
-            fname = matFiles{mf};
-            if contains(fname, 'Pos') && contains(fname, posStr)
-                filename = fullfile(variantName, fname);
-                break;
-            end
-        end
-        if isempty(filename)
-            if pos == 1, fprintf('    Pos %d: nicht gefunden\n', pos); end
+        fname = getFileFromMap(fileMap, variantName, pos);
+        if isempty(fname)
             continue;
         end
-        
-        checkedFiles{end+1} = filename; %#ok<SAGROW>
+
+        filename = fullfile(dataDir, fname);
+
+        % Lade und verarbeite Datei
         try
             S = load(filename);
-        catch ME
-            if pos == 1, fprintf('    Pos %d: Fehler beim Laden - %s\n', pos, ME.message); end
-            continue;
-        end
+            ir = extractIR(S);
 
-        ir = [];
-        if isfield(S,'RiR') && ~isempty(S.RiR)
-            ir = double(S.RiR(:));
-        elseif isfield(S,'RIR') && ~isempty(S.RIR)
-            ir = double(S.RIR(:));
-        else
-            % Fallback: erstes numerisches Feld mit vielen Elementen
-            fns = fieldnames(S);
-            for f = 1:numel(fns)
-                fname = fns{f};
-                if startswith(fname, '__'), continue; end
-                v = S.(fname);
-                if isnumeric(v) && numel(v) > 1000
-                    ir = double(v(:));
-                    break;
-                end
+            if ~isempty(ir)
+                N = numel(ir);
+                H_mag = abs(fft(ir, N));
+                FS_global = max(FS_global, max(H_mag(1:floor(N/2)+1)));
+                checkedFiles = checkedFiles + 1;
             end
-        end
-
-        if isempty(ir) || numel(ir) < 2
-            if pos == 1, fprintf('    Pos %d: IR nicht geladen\n', pos); end
+        catch
             continue;
         end
-
-        N = numel(ir);
-        IR_fft = fft(ir);
-        H_mag = abs(IR_fft(1:floor(N/2)+1));
-        FS_global = max(FS_global, max(H_mag));
-        found_any = true;
-        if pos == 1, fprintf('    Pos %d: FS_global = %g\n', pos, FS_global); end
     end
 end
 
-if ~found_any || FS_global == 0
-    if isempty(checkedFiles)
-        error('Keine geeigneten .mat-Dateien im erwarteten Format gefunden. Geprüfte Varianten: %s', strjoin(variantNames,', '));
-    else
-        error('Keine gültigen Impulsantworten gefunden; FS_Global = 0. Beispiel geprüft: %s', checkedFiles{1});
-    end
+if FS_global == 0 || checkedFiles == 0
+    error('Keine gültigen Impulsantworten gefunden. FS_Global = 0');
 end
-fprintf('✓ Globale Referenz (FS) ermittelt: %g (Spektral-Maximum) aus %d Dateien\n', FS_global, numel(checkedFiles));
+fprintf('✓ Globale Referenz (FS) ermittelt: %g (Spektral-Maximum) aus %d Dateien\n', FS_global, checkedFiles);
 
 %% ---------------- Ensure output dirs ----------------
 if ~exist(outputPlotDir,'dir'), mkdir(outputPlotDir); end
 if ~exist(outputExcelDir,'dir'), mkdir(outputExcelDir); end
 
 %% ---------------- Verarbeitung pro Variante ----------------
-nFreq = length(f_terz);
-
 for vi = 1:numel(variantNames)
     variantName = variantNames{vi};
     fprintf('\n========================================\n');
@@ -223,97 +159,60 @@ for vi = 1:numel(variantNames)
     fprintf('========================================\n');
 
     % Speichergrößen: Positionen dynamisch
-    posList = selectedPositions;
-    nPos = numel(posList);
+    nPos = numel(selectedPositions);
 
     L_dBFS = NaN(nPos, nFreq);
     H_all = cell(nPos,1);
     freq_all = cell(nPos,1);
 
     for pi = 1:nPos
-        pos = posList(pi);
+        pos = selectedPositions(pi);
 
-        % Verwende Java-API zum Auflisten von Dateien für diese Variante
-        matFiles = {};
-        try
-            jDir = java.io.File(variantName);
-            if jDir.exists() && jDir.isDirectory()
-                jFiles = jDir.listFiles();
-                for jf = 1:length(jFiles)
-                    jn = char(jFiles(jf).getName());
-                    if endsWith(jn, '.mat')
-                        matFiles{end+1} = jn; %#ok<SAGROW>
-                    end
-                end
-            end
-        catch
-            matFiles = {};
-        end
-        
-        filename = '';
-        posStr = num2str(pos);
-        for mf = 1:numel(matFiles)
-            fname = matFiles{mf};
-            if contains(fname, 'Pos') && contains(fname, posStr)
-                filename = fullfile(variantName, fname);
-                break;
-            end
-        end
-        if isempty(filename)
+        % Suche passende Datei
+        fname = getFileFromMap(fileMap, variantName, pos);
+        if isempty(fname)
             warning('Keine Datei für Pos %d in %s gefunden. Position übersprungen.', pos, variantName);
             continue;
         end
 
+        filename = fullfile(dataDir, fname);
         S = load(filename);
-        ir = [];
-        if isfield(S,'RiR') && ~isempty(S.RiR)
-            ir = double(S.RiR(:));
-        elseif isfield(S,'RIR') && ~isempty(S.RIR)
-            ir = double(S.RIR(:));
-        else
-            % Fallback: erstes numerisches Feld mit vielen Elementen
-            fns = fieldnames(S);
-            for f = 1:numel(fns)
-                fname = fns{f};
-                if startswith(fname, '__'), continue; end
-                v = S.(fname);
-                if isnumeric(v) && numel(v) > 1000
-                    ir = double(v(:));
-                    break;
-                end
-            end
-        end
-        if isempty(ir) || numel(ir) < 2
+        ir = extractIR(S);
+
+        if isempty(ir)
             warning('Datei %s enthält keinen erkennbaren IR-Vektor. Übersprungen.', filename);
             continue;
         end
+
+        fprintf('  Position %02d ausgewertet\n', pos);
+
         N = length(ir);
         IR_fft = fft(ir);
-        freq = (0:N-1) * fs / N;
+        freq = (0:N-1) * (fs / N);
 
-        H_mag = abs(IR_fft(1:floor(N/2)+1));
-        freq_pos = freq(1:floor(N/2)+1);
+        nHalf = floor(N/2)+1;
+        H_mag = abs(IR_fft(1:nHalf));
+        freq_pos = freq(1:nHalf);
 
         % dBFS relativ zur globalen Referenz
         H_dBFS = 20*log10((H_mag + eps) / FS_global);
 
-        % Terzband-Auswertung
+        % Terzband-Auswertung (vektorisiert wo möglich)
+        IR_fft_abs2 = abs(IR_fft).^2;
+
         for k = 1:nFreq
-            f1 = f_terz(k) / 2^(1/6);
-            f2 = f_terz(k) * 2^(1/6);
-            if f2 >= fs/2
-                L_dBFS(pi,k) = NaN;
-                continue;
+            if f_upper(k) >= fs/2
+                continue;  % L_dBFS bleibt NaN
             end
-            idx = (freq >= f1) & (freq <= f2);
+
+            idx = (freq >= f_lower(k)) & (freq <= f_upper(k));
             if ~any(idx)
-                L_dBFS(pi,k) = NaN;
-                continue;
+                continue;  % L_dBFS bleibt NaN
             end
-            Power_band = abs(IR_fft(idx)).^2;
-            total_energy = sum(Power_band) / N;
+
+            total_energy = sum(IR_fft_abs2(idx)) / N;
             rms_band = sqrt(total_energy);
-            L_dBFS(pi,k) = 20*log10((rms_band + eps) / FS_global );
+            L_dBFS(pi,k) = 20*log10((rms_band + eps) / FS_global);
         end
 
         H_all{pi} = H_dBFS;
@@ -321,26 +220,22 @@ for vi = 1:numel(variantNames)
     end
 
     % Mittelwert pro Terzband (über die ausgewählten Positionen)
-    % Energieadditiv mitteln über Positionen (wenn Werte NaN -> omit)
     valid_mask = ~isnan(L_dBFS);
     if any(valid_mask(:))
-        L_mean_dBFS = 10*log10( sum( 10.^(L_dBFS./10) .* valid_mask, 1, 'double' ) ./ max(1,sum(valid_mask,1)) );
+        L_mean_dBFS = 10*log10(sum(10.^(L_dBFS/10) .* valid_mask, 1) ./ max(1, sum(valid_mask,1)));
     else
         L_mean_dBFS = NaN(1,nFreq);
     end
 
-    % Optional: Differenzmodus -> Pegel relativ zum Positionsmittel (pro Variante)
+    % Optional: Differenzmodus
+    L_plot = L_dBFS;
     if strcmpi(plotMode,'difference')
-        % Subtrahiere Mittelwert pro Terzband (L_mean_dBFS) von jeder Position
-        L_plot = bsxfun(@minus, L_dBFS, L_mean_dBFS);
-    else
-        L_plot = L_dBFS;
+        L_plot = L_plot - L_mean_dBFS;
     end
 
     %% ---------------- Excel-Export ----------------
-    % Tabellen für diese Variante speichern
-    rowNames = arrayfun(@(x) sprintf('Pos_%02d', x), posList, 'UniformOutput', false);
-    colNames = arrayfun(@(f) sprintf('F%.0f', f), f_terz, 'UniformOutput', false);
+    rowNames = compose('Pos_%02d', selectedPositions);
+    colNames = compose('F%.0f', f_terz);
 
     T_LdBFS = array2table(L_plot, 'RowNames', rowNames, 'VariableNames', colNames);
 
@@ -349,67 +244,75 @@ for vi = 1:numel(variantNames)
         writetable(T_LdBFS, excelFile, 'WriteRowNames', true);
         fprintf('Excel geschrieben: %s\n', excelFile);
     catch ME
-        warning('Konnte Excel nicht schreiben: %s\n', ME.message);
+        warning(ME.identifier, 'Konnte Excel nicht schreiben: %s', ME.message);
     end
 
     %% ---------------- Plots ----------------
-    variantPlotDir = fullfile(outputPlotDir, variantName);
-    if ~exist(variantPlotDir,'dir'), mkdir(variantPlotDir); end
-
     % Y-Achsen-Grenzen (global für diese Variante)
-    y_min_terz = min(L_plot(:), [], 'omitnan');
-    y_max_terz = max(L_plot(:), [], 'omitnan');
-    if isempty(y_min_terz) || isempty(y_max_terz) || isnan(y_min_terz) || isnan(y_max_terz)
-        y_range_terz = [-100 0];
+    validData = L_plot(~isnan(L_plot));
+    if ~isempty(validData)
+        y_range_terz = [floor(min(validData)/10)*10, ceil(max(validData)/10)*10];
     else
-        y_range_terz = [floor(y_min_terz/10)*10, ceil(y_max_terz/10)*10];
+        y_range_terz = [-100 0];
     end
 
+    % Plot-Einstellungen (konstant für alle Plots)
+    xtick_vals = [500 1000 2000 5000 10000 20000 50000 100000];
+    xtick_labels = {'500','1k','2k','5k','10k','20k','50k','100k'};
+    f_lim = [min(f_terz) max(f_terz)];
+
+    % Dateinamen-Suffix basierend auf Modus
+    if strcmpi(plotMode, 'difference')
+        modeSuffix = '_diff';
+    else
+        modeSuffix = '';
+    end
+
+    % Terzpegel-Plots
     for pi = 1:nPos
-        pos = posList(pi);
+        pos = selectedPositions(pi);
+        if all(isnan(L_plot(pi,:))), continue; end
+
         fig = figure('Visible','off','Position',[100,100,1000,500]);
         stairs(f_terz, L_plot(pi,:), 'LineWidth',2, 'Color',[0 0.4470 0.7410]);
         grid on; set(gca,'XScale','log');
         xlabel('Frequenz [Hz]'); ylabel('Pegel [dB]');
-        title(sprintf('%s - Position %02d (%s)', variantName, pos, plotMode));
-        xlim([min(f_terz) max(f_terz)]);
+        title(sprintf('%s - Position %02d', variantName, pos));
+        xlim(f_lim);
         ylim(y_range_terz);
-        xticks([500 1000 2000 5000 10000 20000 50000 100000]);
-        xticklabels({'500','1k','2k','5k','10k','20k','50k','100k'});
+        xticks(xtick_vals);
+        xticklabels(xtick_labels);
 
-        filename = fullfile(variantPlotDir, sprintf('Terzpegel_%s_Pos_%02d.png', variantName, pos));
+        filename = fullfile(outputPlotDir, sprintf('Terzpegel_%s_Pos_%02d%s.png', variantName, pos, modeSuffix));
         saveas(fig, filename);
         saveas(fig, strrep(filename,'.png','.fig'));
         close(fig);
     end
 
-    % Übertragungsfunktionen für jede Position
-    % Grenzen bestimmen
-    y_min_H = inf; y_max_H = -inf;
-    for pi = 1:nPos
-        if ~isempty(H_all{pi})
-            y_min_H = min(y_min_H, min(H_all{pi}));
-            y_max_H = max(y_max_H, max(H_all{pi}));
-        end
+    % Übertragungsfunktionen
+    validH = cellfun(@(x) ~isempty(x), H_all);
+    if any(validH)
+        allH = cell2mat(H_all(validH)');
+        y_range_H = [floor(min(allH(:))/10)*10, ceil(max(allH(:))/10)*10];
+    else
+        y_range_H = [-120 0];
     end
-    if ~isfinite(y_min_H), y_min_H = -120; end
-    if ~isfinite(y_max_H), y_max_H = 0; end
-    y_range_H = [floor(y_min_H/10)*10, ceil(y_max_H/10)*10];
 
     for pi = 1:nPos
-        pos = posList(pi);
+        pos = selectedPositions(pi);
         if isempty(H_all{pi}), continue; end
+
         fig = figure('Visible','off','Position',[100,100,800,500]);
         semilogx(freq_all{pi}, H_all{pi}, '-', 'LineWidth',1.5, 'Color',[0.85 0.33 0.10]);
         grid on;
         xlabel('Frequenz [Hz]'); ylabel('Pegel [dBFS]');
         title(sprintf('Uebertragungsfunktion - %s - Pos %02d', variantName, pos));
-        xlim([min(f_terz) max(f_terz)]);
+        xlim(f_lim);
         ylim(y_range_H);
-        xticks([500 1000 2000 5000 10000 20000 50000 100000]);
-        xticklabels({'500','1k','2k','5k','10k','20k','50k','100k'});
+        xticks(xtick_vals);
+        xticklabels(xtick_labels);
 
-        filename = fullfile(variantPlotDir, sprintf('Uebertragungsfunktion_%s_Pos_%02d.png', variantName, pos));
+        filename = fullfile(outputPlotDir, sprintf('Uebertragungsfunktion_%s_Pos_%02d%s.png', variantName, pos, modeSuffix));
         saveas(fig, filename);
         saveas(fig, strrep(filename,'.png','.fig'));
         close(fig);
@@ -422,12 +325,100 @@ disp('========================================');
 disp('Alle ausgewählten Varianten erfolgreich verarbeitet!');
 disp('========================================');
 
+%% ---------------- Hilfsfunktionen ----------------
+function fileMap = buildFileMap(matFiles, variantNames, positions)
+    % Erstellt eine Map für schnellen Dateizugriff
+    % fileMap{variant_idx, pos_idx} = filename
 
-%[appendix]{"version":"1.0"}
-%---
-%[metadata:view]
-%   data: {"layout":"onright","rightPanelPercent":40}
-%---
-%[output:8540ce9e]
-%   data: {"dataType":"text","outputData":{"text":"Terzpegel-Auswertung abgeschlossen.\n","truncated":false}}
-%---
+    nVariants = numel(variantNames);
+    nPos = numel(positions);
+    fileMap = cell(nVariants, nPos);
+
+    for i = 1:numel(matFiles)
+        fname = matFiles{i};
+
+        % Finde zugehörige Variante
+        for vi = 1:nVariants
+            if ~startsWith(fname, variantNames{vi})
+                continue;
+            end
+
+            % Finde Position
+            for pi = 1:nPos
+                posStr = num2str(positions(pi));
+                pattern = ['Pos[_,]' posStr '([^\d]|\.mat$)'];
+                if ~isempty(regexp(fname, pattern, 'once'))
+                    fileMap{vi, pi} = fname;
+                    break;
+                end
+            end
+            break;
+        end
+    end
+end
+
+function fname = getFileFromMap(fileMap, variantName, pos)
+    % Holt Dateinamen aus der Map
+    fname = '';
+
+    [nVariants, nPos] = size(fileMap);
+
+    % Finde Varianten-Index
+    vi = find(strcmp(variantName, fileMap(1:nVariants, 1)), 1);
+    if isempty(vi)
+        % Lineare Suche als Fallback
+        for v = 1:nVariants
+            for p = 1:nPos
+                if ~isempty(fileMap{v, p}) && startsWith(fileMap{v, p}, variantName)
+                    vi = v;
+                    break;
+                end
+            end
+            if ~isempty(vi), break; end
+        end
+    end
+
+    if isempty(vi), return; end
+
+    % Finde Position-Index (lineare Suche durch Positionen)
+    for pi = 1:nPos
+        if ~isempty(fileMap{vi, pi})
+            posStr = num2str(pos);
+            pattern = ['Pos[_,]' posStr '([^\d]|\.mat$)'];
+            if ~isempty(regexp(fileMap{vi, pi}, pattern, 'once'))
+                fname = fileMap{vi, pi};
+                return;
+            end
+        end
+    end
+end
+
+function ir = extractIR(S)
+    % Extrahiert die Impulsantwort aus der geladenen Struktur
+
+    ir = [];
+
+    % Versuche bekannte Feldnamen
+    if isfield(S,'RiR') && ~isempty(S.RiR)
+        ir = double(S.RiR(:));
+    elseif isfield(S,'RIR') && ~isempty(S.RIR)
+        ir = double(S.RIR(:));
+    else
+        % Fallback: erstes numerisches Feld mit vielen Elementen
+        fns = fieldnames(S);
+        for f = 1:numel(fns)
+            fname = fns{f};
+            if startsWith(fname, '__'), continue; end
+            v = S.(fname);
+            if isnumeric(v) && numel(v) > 1000
+                ir = double(v(:));
+                return;
+            end
+        end
+    end
+
+    % Validierung
+    if ~isempty(ir) && numel(ir) < 2
+        ir = [];
+    end
+end
