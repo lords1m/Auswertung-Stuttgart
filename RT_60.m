@@ -182,12 +182,12 @@ for i = 1:nMess
     xlabel('Frequenz [Hz]');
     ylabel('Nachhallzeit RT60 [s]');
     title(sprintf('RT60 - Position %02d', i));
-    xlim([min(f_terz) max(f_terz)]);
+    xlim([4000 60000]);
     ylim(y_range_RT60);
 
     % Formatierung der x-Achse
-    xticks([500 1000 2000 5000 10000 20000 50000 100000]);
-    xticklabels({'500', '1k', '2k', '5k', '10k', '20k', '50k', '100k'});
+    xticks([4000 5000 10000 20000 50000 60000]);
+    xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
 
     % Plot in Varianten-Ordner speichern
     filename = fullfile(variantName, sprintf('RT60_Pos_%02d', i));
@@ -222,12 +222,12 @@ set(gca, 'XScale', 'log');
 xlabel('Frequenz [Hz]');
 ylabel('Nachhallzeit RT60 [s]');
 title(sprintf('%s - Gemittelte RT60 (Pos. 5,6,7,9,10,11,13,14)', variantName));
-xlim([min(f_terz) max(f_terz)]);
+xlim([4000 60000]);
 ylim(y_range_RT60);
 
 % Formatierung der x-Achse
-xticks([500 1000 2000 5000 10000 20000 50000 100000]);
-xticklabels({'500', '1k', '2k', '5k', '10k', '20k', '50k', '100k'});
+xticks([4000 5000 10000 20000 50000 60000]);
+xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
 
 % Plot in Varianten-Ordner speichern
 filename_mean = fullfile(variantName, 'RT60_Mittelwert');
@@ -309,7 +309,7 @@ set(gca, 'XScale', 'log');
 xlabel('Frequenz [Hz]', 'FontSize', 12);
 ylabel('Nachhallzeit RT60 [s]', 'FontSize', 12);
 title('Vergleich RT60-Mittelwerte aller Varianten (Pos. 5,6,7,9,10,11,13,14)', 'FontSize', 14);
-xlim([min(f_terz) max(f_terz)]);
+xlim([4000 60000]);
 
 % Y-Achse: Dynamisch an Daten anpassen
 y_min_all = min(RT60_means(:), [], 'omitnan');
@@ -317,8 +317,8 @@ y_max_all = max(RT60_means(:), [], 'omitnan');
 ylim([floor(y_min_all*10)/10, ceil(y_max_all*10)/10]);
 
 % Formatierung der x-Achse
-xticks([500 1000 2000 5000 10000 20000 50000 100000]);
-xticklabels({'500', '1k', '2k', '5k', '10k', '20k', '50k', '100k'});
+xticks([4000 5000 10000 20000 50000 60000]);
+xticklabels({'4k', '5k', '10k', '20k', '50k', '60k'});
 
 % Legende
 legend(legend_entries, 'Location', 'best', 'FontSize', 11);

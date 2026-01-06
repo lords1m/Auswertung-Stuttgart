@@ -24,7 +24,7 @@ fprintf('Arbeitsverzeichnis: %s\n', pwd);
 dataDir = 'data';
 
 % Varianten zum Verarbeiten (leer = automatisch alle außer '_alt' suchen)
-selectedVariants = { 'Variante_2'};  % z.B. {'Variante_1', 'Variante_2'} oder {} für Auto
+selectedVariants = { 'Variante_1'};  % z.B. {'Variante_1', 'Variante_2'} oder {} für Auto
 excludePattern = '_alt';  % Ausschlussmuster für Varianten
 
 % Positionen (Messpunkte) auswählen
@@ -33,10 +33,6 @@ selectedPositions = 1:14;   % z.B. [1 3 5] oder 1:14
 % Ausgabeordner
 outputPlotDir = 'Plots';
 outputExcelDir = 'Excel';
-
-% Plot-Modus: 'absolute' (Pegel in dBFS relativ zur globalen Referenz)
-%            'difference' (je Messung: Pegel minus Mean-Pegel über Positionen für diese Variante)
-plotMode = 'absolute';   % oder 'difference'
 
 % Sampling
 fs = 500e3;   % 500 kHz Abtastrate
@@ -249,17 +245,11 @@ for vi = 1:numel(variantNames)
         L_sum_dBFS = NaN(1,nFreq);
     end
 
-    % Optional: Differenzmodus
-    L_plot = L_dBFS;
-    if strcmpi(plotMode,'difference')
-        L_plot = L_plot - L_mean_dBFS;
-    end
-
     %% ---------------- Excel-Export ----------------
     rowNames = compose('Pos_%02d', selectedPositions);
     colNames = compose('F%.0f', f_terz);
 
-    T_LdBFS = array2table(L_plot, 'RowNames', rowNames, 'VariableNames', colNames);
+    T_LdBFS = array2table(L_dBFS, 'RowNames', rowNames, 'VariableNames', colNames);
 
     excelFile = fullfile(outputExcelDir, sprintf('%s_Terzpegel_dBFS.xlsx', variantName));
     try
@@ -271,7 +261,7 @@ for vi = 1:numel(variantNames)
 
     %% ---------------- Plots ----------------
     % Y-Achsen-Grenzen (global für diese Variante)
-    validData = L_plot(~isnan(L_plot));
+    validData = L_dBFS(~isnan(L_dBFS));
     if ~isempty(validData)
         y_range_terz = [floor(min(validData)/10)*10, ceil(max(validData)/10)*10];
     else
@@ -279,33 +269,26 @@ for vi = 1:numel(variantNames)
     end
 
     % Plot-Einstellungen (konstant für alle Plots)
-    xtick_vals = [500 1000 2000 5000 10000 20000 50000 100000];
-    xtick_labels = {'500','1k','2k','5k','10k','20k','50k','100k'};
-    f_lim = [min(f_terz) max(f_terz)];
-
-    % Dateinamen-Suffix basierend auf Modus
-    if strcmpi(plotMode, 'difference')
-        modeSuffix = '_diff';
-    else
-        modeSuffix = '';
-    end
+    xtick_vals = [4000 5000 10000 20000 50000 60000];
+    xtick_labels = {'4k','5k','10k','20k','50k','60k'};
+    f_lim = [4000 60000];
 
     % Terzpegel-Plots
     for pi = 1:nPos
         pos = selectedPositions(pi);
-        if all(isnan(L_plot(pi,:))), continue; end
+        if all(isnan(L_dBFS(pi,:))), continue; end
 
         fig = figure('Visible','off','Position',[100,100,1000,500]);
-        stairs(f_terz, L_plot(pi,:), 'LineWidth',2, 'Color',[0 0.4470 0.7410]);
+        stairs(f_terz, L_dBFS(pi,:), 'LineWidth',2, 'Color',[0 0.4470 0.7410]);
         grid on; set(gca,'XScale','log');
-        xlabel('Frequenz [Hz]'); ylabel('Pegel [dB]');
+        xlabel('Frequenz [Hz]'); ylabel('Pegel [dBFS]');
         title(sprintf('%s - Position %02d', variantName, pos));
         xlim(f_lim);
         ylim(y_range_terz);
         xticks(xtick_vals);
         xticklabels(xtick_labels);
 
-        filename = fullfile(outputPlotDir, sprintf('Terzpegel_%s_Pos_%02d%s.png', variantName, pos, modeSuffix));
+        filename = fullfile(outputPlotDir, sprintf('Terzpegel_%s_Pos_%02d.png', variantName, pos));
         saveas(fig, filename);
         saveas(fig, strrep(filename,'.png','.fig'));
         close(fig);

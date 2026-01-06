@@ -186,7 +186,7 @@ grid on;
 xlabel('Frequenz [Hz]');
 ylabel('Pegel [dB rel. Max]');
 title('Original Spektrum (FFT)');
-xlim([500 fs/2]);
+xlim([4000 60000]);
 ylim([-80 5]);
 
 % Subplot 6: Gefiltertes Spektrum
@@ -201,7 +201,7 @@ grid on;
 xlabel('Frequenz [Hz]');
 ylabel('Pegel [dB rel. Max]');
 title('Gefiltertes Spektrum (FFT)');
-xlim([500 fs/2]);
+xlim([4000 60000]);
 ylim([-80 5]);
 
 % Gesamttitel

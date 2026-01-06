@@ -2,7 +2,13 @@
 
 Dieses Repository enthält MATLAB-Skripte zur Analyse von Raumimpulsantworten (RIR) mit Fokus auf Terzpegel-Auswertung und Nachhallzeit-Berechnung.
 
+Variante 1 = Ohne Elemente, Ohne Deckel
+Variante 2 = Ohne Elemente, Mit Deckel
+Variante 3 = Mit Absorber, Ohne Deckel
+Variante 4 = Mit Balkonen, Ohne Deckel
 ---
+
+Alle Plots stellen den bereich 4k - 60k dar. 
 
 ## Erforderliche Ordnerstruktur
 
