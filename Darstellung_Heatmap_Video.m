@@ -24,10 +24,10 @@ fs = 500e3; % 500 kHz
 
 % Video-Parameter
 videoFPS = 20;          % Bilder pro Sekunde im Video
-timeStep_ms = 0.01;        % Zeitschritt zwischen Frames in der IR (5 ms für feinere Auflösung)
+timeStep_ms = 0.05;        % Zeitschritt zwischen Frames in der IR (5 ms für feinere Auflösung)
 windowSize_ms = 0.01;     % Integrationsfenster für RMS (Glättung)
 maxDuration_s = 0.1;    % Maximale Dauer der Analyse pro IR (um Rauschen am Ende zu ignorieren)
-cLim = [-60 0];         % Farbskala in dBFS (festgelegt für Vergleichbarkeit)
+cLim = [-50 0];         % Farbskala in dBFS (festgelegt für Vergleichbarkeit)
 
 % Layout (4x4)
 positionsLayout = {
